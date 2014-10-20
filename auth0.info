@@ -1,4 +1,3 @@
 name = Auth0
 description = "Provides single sign on for drupal pages"
 core = "7.x"
-version = "1.0"

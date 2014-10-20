@@ -23,7 +23,7 @@ function auth0_theme_registry_alter(&$theme_registry) {
  */
 function auth0_menu() {
     $items = array();
-    // Add the callback controler
+    // Add the callback controller
     $items['auth0/callback'] = array(
         'description' => 'Callback handler from auth0',
         'page callback' => 'auth0_callback',
@@ -71,9 +71,10 @@ function auth0_menu() {
     return $items;
 }
 
-function verify_email_page() {
+function auth0_verify_email_page() {
     $token = $_REQUEST['token'];
     $secret = variable_get('auth0_client_secret');
+
     try {
         $user = \JWT::decode($token, base64_decode(strtr($secret, '-_', '+/')) );
         $userId = $user->sub;
@@ -94,23 +95,18 @@ function verify_email_page() {
 }
 function auth0_callback() {
     global $base_root;
-    $sessionState = isset($_SESSION['auth0_state'])?$_SESSION['auth0_state']:false;
-    if ($sessionState  == false || $_GET['state'] != $sessionState) {
-        drupal_set_message(t('The state code doesn\'t match! We can\'t log you in. Are you sure you are comming from the page?'),'error');
-        return drupal_goto();
-    }
-    $state = isset($_SESSION['auth0_state'])?$_SESSION['auth0_state']:false;
 
     $auth0 = new Auth0(array(
         'domain'        => variable_get('auth0_domain'),
         'client_id'     => variable_get('auth0_client_id'),
         'client_secret' => variable_get('auth0_client_secret'),
         'redirect_uri'  => "$base_root/auth0/callback",
-        'store'         => false,
+        'store'         => false
     ));
 
 
     $userInfo = null;
+
     try {
         $userInfo = $auth0->getUserInfo();
         $idToken = $auth0->getIdToken();
@@ -118,20 +114,24 @@ function auth0_callback() {
 
     }
 
+    // var_dump($auth0); die;
+
     if ($userInfo) {
-        login_auth0_user($userInfo, $idToken);
+        auth0_login_auth0_user($userInfo, $idToken);
     } else {
         drupal_set_message(t('There was a problem logging you in, sorry by the inconvenience.'),'error');
     }
-    return drupal_goto();
-}
-function fail_with_verify_email($idToken) {
-    drupal_set_message(t("Please verify your email and log in again. Click <a href=@url>here</a> to Resend verification email.", array('@url' => url('auth0/verify_email', array('query' => array('token' => $idToken))))), 'warning');
-    return drupal_goto();
 
+    return drupal_goto();
 }
-function login_auth0_user($userInfo,$idToken) {
+function auth0_fail_with_verify_email($idToken) {
+    drupal_set_message(t("Please verify your email and log in again. Click <a href=@url>here</a> to Resend verification email.", array('@url' => url('auth0/verify_email', array('query' => array('token' => $idToken))))), 'warning');
+    
+    return drupal_goto();
+}
+function auth0_login_auth0_user($userInfo,$idToken) {
     $requires_email = variable_get('auth0_requires_verified_email');
+    
     if ($requires_email) {
         if (!isset($userInfo['email']) || empty($userInfo['email'])) {
             return drupal_set_message(
@@ -140,23 +140,24 @@ function login_auth0_user($userInfo,$idToken) {
             );
         }
         if (!$userInfo['email_verified']) {
-            fail_with_verify_email($idToken);
+            auth0_fail_with_verify_email($idToken);
         }
     }
 
 
     // See if there is a user in the auth0_user table with the user info client id
-    $uid = find_auth0_user($userInfo['user_id']);
+    $uid = auth0_find_auth0_user($userInfo['user_id']);
+    
     if ($uid) {
         // User exists!
         // update the auth0_user with the new userInfo object
-        update_auth0_object($userInfo);
+        auth0_update_auth0_object($userInfo);
         // Log in
         $form_state['uid'] = $uid;
         user_login_submit(array(), $form_state);
     } else {
-        // If the user doesn't exist we need to either create a new one, or asign him to an existing one
-       // If the user doesn't exist we need to either create a new one, or asign him to an existing one
+        // If the user doesn't exist we need to either create a new one, or assign him to an existing one
+       // If the user doesn't exist we need to either create a new one, or assign him to an existing one
         $isDatabaseUser = false;
         foreach ($userInfo['identities'] as $identity) {
             if ($identity['provider'] == "auth0") {
@@ -176,15 +177,16 @@ function login_auth0_user($userInfo,$idToken) {
             // Don't allow creation or assignation of user if the email is not verified, that would
             // be hijacking
             if (!$userInfo['email_verified']) {
-                return fail_with_verify_email($idToken);
+                return auth0_fail_with_verify_email($idToken);
             }
             $uid = $joinUser->uid;
         } else {
             // If we are here, we need to create the user
-            $uid = create_user_from_auth0($userInfo);
+            $uid = auth0_create_user_from_auth0($userInfo);
         }
 
-        insert_auth0_user($userInfo, $uid);
+        auth0_insert_auth0_user($userInfo, $uid);
+
         // Log in
         $form_state['uid'] = $uid;
         user_login_submit(array(), $form_state);
@@ -205,7 +207,7 @@ function auth0_user_delete($account) {
 /**
  * Function returns uid of passed google id
  */
-function find_auth0_user($id) {
+function auth0_find_auth0_user($id) {
     $rs = db_select('auth0_user', 'a')
         ->fields('a', array('drupal_id'))
         ->condition('auth0_id', $id, '=')
@@ -214,7 +216,7 @@ function find_auth0_user($id) {
     return empty($rs) ? false : $rs['drupal_id'];
 }
 
-function update_auth0_object($userInfo) {
+function auth0_update_auth0_object($userInfo) {
     db_update('auth0_user')
         ->fields(array(
             'auth0_object' => serialize($userInfo)
@@ -223,7 +225,7 @@ function update_auth0_object($userInfo) {
         ->execute();
 }
 
-function insert_auth0_user ($userInfo, $uid) {
+function auth0_insert_auth0_user ($userInfo, $uid) {
     $auth0_user = array(
         'auth0_id' => $userInfo['user_id'],
         'drupal_id' => $uid,
@@ -233,7 +235,7 @@ function insert_auth0_user ($userInfo, $uid) {
     drupal_write_record('auth0_user', $auth0_user);
 }
 
-function create_user_from_auth0 ($userInfo) {
+function auth0_create_user_from_auth0 ($userInfo) {
     $user = new stdClass();
     if (isset($userInfo['email']) && !empty($userInfo['email'])) {
         $email = $userInfo['email'];
@@ -254,6 +256,7 @@ function create_user_from_auth0 ($userInfo) {
     $user->status = 1;
     $user->pass = user_password();
     $new_user = user_save($user);
+
     return $new_user->uid;
 }
 
