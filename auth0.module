@@ -1,7 +1,7 @@
 <?php
 
 // Define some module default settings
-define('AUTH0_WIDGET_CDN', 'http://cdn.auth0.com/js/lock-7.min.js');
+define('AUTH0_WIDGET_CDN', '//cdn.auth0.com/js/lock-7.min.js');
 define('AUTH_LOGIN_CSS', "#a0-widget .a0-panel {
     min-width: 90%;
     padding: 5%;
@@ -594,10 +594,11 @@ function template_preprocess_auth0_lock(&$vars) {
   $query = array(
     'redirect_uri' => $vars['params']['callbackURL'], 
     'client_id' => $vars['client_id'], 
-    'response_type' => 'code', 
+    'response_type' => 'code',
+	'connection' => 'salesforce-community',
     'state' => $vars['params']['authParams']['state']
     );
-  $vars['login_link'] = l(t('Log in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query)); 
+  $vars['login_link'] = url('https://' . $vars['domain'] . '/authorize', array('query' => $query));
 
   // Add the custom css if specified.
   if ($css = variable_get("auth0_login_css", AUTH_LOGIN_CSS)) {
