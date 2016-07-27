@@ -1,7 +1,7 @@
 <?php
 
 // Define some module default settings
-define('AUTH0_WIDGET_CDN', 'http://cdn.auth0.com/js/lock-7.min.js');
+define('AUTH0_WIDGET_CDN', '//cdn.auth0.com/js/lock-7.min.js');
 define('AUTH_LOGIN_CSS', "#a0-widget .a0-panel {
     min-width: 90%;
     padding: 5%;
@@ -358,6 +358,10 @@ function auth0_create_user_from_auth0($user_info) {
   $user->is_new = TRUE;
   $user->status = variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_VISITORS;
   $user->pass = user_password();
+
+  //allow other modules to modify the drupal user before saving
+  drupal_alter('auth0_create_user', $user_info, $user);
+
   $new_user = user_save($user);
 
   if ($user) {
@@ -613,10 +617,11 @@ function template_preprocess_auth0_lock(&$vars) {
   $query = array(
     'redirect_uri' => $vars['params']['callbackURL'], 
     'client_id' => $vars['client_id'], 
-    'response_type' => 'code', 
+    'response_type' => 'code',
+	'connection' => 'salesforce-community',
     'state' => $vars['params']['authParams']['state']
     );
-  $vars['login_link'] = l(t('Log in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query)); 
+  $vars['login_link'] = url('https://' . $vars['domain'] . '/authorize', array('query' => $query));
 
   // Add the custom css if specified.
   if ($css = variable_get("auth0_login_css", AUTH_LOGIN_CSS)) {
