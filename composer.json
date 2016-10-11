@@ -1,5 +1,6 @@
 {
     "name": "auth0/drupal",
+    "type": "drupal-module",
     "require": {
         "auth0/auth0-php": "0.6.*",
         "adoy/oauth2": "dev-master",
