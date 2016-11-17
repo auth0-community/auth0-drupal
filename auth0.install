@@ -9,31 +9,31 @@
  * Implements hook_schema().
  */
 function auth0_schema() {
-  $schema['auth0_user'] = array(
+  $schema['auth0_user'] = [
     'description' => 'Joins auth0 users with drupal users.',
-    'fields' => array(
-      'auth0_id' => array(
+    'fields' => [
+      'auth0_id' => [
         'description' => 'The user id on auth0',
         'type' => 'varchar',
         'length' => 100,
         'not null' => TRUE,
-      ),
-      'drupal_id' => array(
+      ],
+      'drupal_id' => [
         'description' => 'The user id on drupal',
         'type' => 'int',
         'not null' => TRUE,
-      ),
-      'auth0_object' => array(
+      ],
+      'auth0_object' => [
         'description' => 'A serialized version of the auth0 user',
         'type' => 'text',
         'not null' => TRUE,
-      ),
-    ),
-    'indexes' => array(
-      'drupal_id' => array('drupal_id'),
-    ),
-    'primary key' => array('auth0_id'),
-  );
+      ],
+    ],
+    'indexes' => [
+      'drupal_id' => ['drupal_id'],
+    ],
+    'primary key' => ['auth0_id'],
+  ];
 
   return $schema;
 }

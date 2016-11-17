@@ -71,7 +71,7 @@ class AuthController extends ControllerBase {
       $lockExtraSettings = "{}";
     }
 
-    return array(
+    return [
       '#theme' => 'auth0_login',
       '#domain' => $config->get('auth0_domain'),
       '#clientID' => $config->get('auth0_client_id'),
@@ -81,7 +81,7 @@ class AuthController extends ControllerBase {
       '#loginCSS' => $config->get('auth0_login_css'),
       '#lockExtraSettings' => $lockExtraSettings,
       '#callbackURL' => "$base_root/auth0/callback",
-    );
+    ];
 
   }
 
@@ -93,13 +93,13 @@ class AuthController extends ControllerBase {
 
     $config = $this->configFactory->get('auth0.settings');
 
-    $auth0 = new Auth0(array(
+    $auth0 = new Auth0([
         'domain'        => $config->get('auth0_domain'),
         'client_id'     => $config->get('auth0_client_id'),
         'client_secret' => $config->get('auth0_client_secret'),
         'redirect_uri'  => "$base_root/auth0/callback",
         'store'         => FALSE
-    ));
+    ]);
 
     $userInfo = NULL;
 
@@ -187,7 +187,7 @@ class AuthController extends ControllerBase {
       return $this->redirect($request->request->get('destination'));
     }
 
-    return $this->redirect('entity.user.canonical', array('user' => $user->id()));
+    return $this->redirect('entity.user.canonical', ['user' => $user->id()]);
   }
 
   /**
@@ -232,13 +232,13 @@ class AuthController extends ControllerBase {
    */
   protected function auth0FailWithVerifyEmail($idToken) {
 
-    $url = Url::fromRoute('auth0.verify_email', array(), array("query" => array('token' => $idToken)));
+    $url = Url::fromRoute('auth0.verify_email', [], ["query" => ['token' => $idToken]]);
 
     drupal_set_message(
       t("Please verify your email and log in again. Click <a href=@url>here</a> to Resend verification email.",
-        array(
+        [
           '@url' => $url->toString()
-        )
+        ]
     ), 'warning');
 
     return new RedirectResponse('/');
@@ -249,7 +249,7 @@ class AuthController extends ControllerBase {
    */
   protected function findAuth0User($id) {
     $auth0_user = $this->databaseConnection->select('auth0_user', 'a')
-        ->fields('a', array('drupal_id'))
+        ->fields('a', ['drupal_id'])
         ->condition('auth0_id', $id, '=')
         ->execute()
         ->fetchAssoc();
@@ -262,9 +262,9 @@ class AuthController extends ControllerBase {
    */
   protected function updateAuth0User($userInfo) {
     $this->databaseConnection->update('auth0_user')
-        ->fields(array(
+        ->fields([
             'auth0_object' => serialize($userInfo)
-        ))
+        ])
         ->condition('auth0_id', $userInfo['user_id'], '=')
         ->execute();
   }
@@ -273,11 +273,11 @@ class AuthController extends ControllerBase {
    * Insert the auth0 user.
    */
   protected function insertAuth0User($userInfo, $uid) {
-    $this->databaseConnection->insert('auth0_user')->fields(array(
+    $this->databaseConnection->insert('auth0_user')->fields([
         'auth0_id' => $userInfo['user_id'],
         'drupal_id' => $uid,
         'auth0_object' => json_encode($userInfo)
-      ))->execute();
+      ])->execute();
 
   }
 
@@ -328,11 +328,11 @@ class AuthController extends ControllerBase {
       
       $client = \Drupal::httpClient();
       
-      $client->request('POST', $url, array(
-          "headers" => array(
+      $client->request('POST', $url, [
+          "headers" => [
             "Authorization" => "Bearer $token"
-          )
-        )
+          ]
+        ]
       );
 
       drupal_set_message(t('An Authorization email was sent to your account'));
