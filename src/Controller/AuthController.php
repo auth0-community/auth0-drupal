@@ -5,8 +5,10 @@ namespace Drupal\auth0\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Url;
 use Drupal\user\Entity\User;
+use Drupal\Core\Database\Connection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -23,13 +25,36 @@ use Auth0SDK\Auth0;
  */
 class AuthController extends ControllerBase {
 
+  /**
+   * @var EventDispatcherInterface
+   */
   protected $eventDispatcher;
 
   /**
-   * Inicialize the controller.
+   * @var Connection
    */
-  public function __construct() {
-    $this->eventDispatcher = \Drupal::service('event_dispatcher');;
+  protected $databaseConnection;
+
+  /**
+   * @param Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   * @param Connection $databaseConnection The default database connection
+   */
+  public function __construct(
+    EventDispatcherInterface $eventDispatcher,
+    Connection $databaseConnection
+  ) {
+    $this->eventDispatcher = $eventDispatcher;
+    $this->databaseConnection = $databaseConnection;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('event_dispatcher'),
+      $container->get('database')
+    );
   }
 
   /**
@@ -38,7 +63,7 @@ class AuthController extends ControllerBase {
   public function login() {
     global $base_root;
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
+    $config = $this->configFactory->get('auth0.settings');
 
     $lockExtraSettings = $config->get('auth0_lock_extra_settings');
 
@@ -66,7 +91,7 @@ class AuthController extends ControllerBase {
   public function callback(Request $request) {
     global $base_root;
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
+    $config = $this->configFactory->get('auth0.settings');
 
     $auth0 = new Auth0(array(
         'domain'        => $config->get('auth0_domain'),
@@ -100,7 +125,7 @@ class AuthController extends ControllerBase {
    * Checks if the email is valid.
    */
   protected function validateUserEmail($userInfo) {
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
+    $config = $this->configFactory->get('auth0.settings');
     $requires_email = $config->get('auth0_requires_verified_email');
 
     if ($requires_email) {
@@ -223,7 +248,7 @@ class AuthController extends ControllerBase {
    * Get the auth0 user profile.
    */
   protected function findAuth0User($id) {
-    $auth0_user = db_select('auth0_user', 'a')
+    $auth0_user = $this->databaseConnection->select('auth0_user', 'a')
         ->fields('a', array('drupal_id'))
         ->condition('auth0_id', $id, '=')
         ->execute()
@@ -236,7 +261,7 @@ class AuthController extends ControllerBase {
    * Update the auth0 user profile.
    */
   protected function updateAuth0User($userInfo) {
-    db_update('auth0_user')
+    $this->databaseConnection->update('auth0_user')
         ->fields(array(
             'auth0_object' => serialize($userInfo)
         ))
@@ -248,8 +273,7 @@ class AuthController extends ControllerBase {
    * Insert the auth0 user.
    */
   protected function insertAuth0User($userInfo, $uid) {
-
-    db_insert('auth0_user')->fields(array(
+    $this->databaseConnection->insert('auth0_user')->fields(array(
         'auth0_id' => $userInfo['user_id'],
         'drupal_id' => $uid,
         'auth0_object' => json_encode($userInfo)
@@ -261,7 +285,6 @@ class AuthController extends ControllerBase {
    * Create the Drupal user based on the Auth0 user profile.
    */
   protected function createDrupalUser($userInfo) {
-
     $user = User::create();
 
     $user->setPassword(uniqid('auth0', TRUE));
@@ -293,7 +316,7 @@ class AuthController extends ControllerBase {
   public function verify_email(Request $request) {
     $token = $request->get('token');
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
+    $config = $this->configFactory->get('auth0.settings');
     $secret = $config->get('auth0_client_secret');
 
     try {
@@ -323,5 +346,4 @@ class AuthController extends ControllerBase {
 
     return new RedirectResponse('/');
   }
-
 }

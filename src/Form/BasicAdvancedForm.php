@@ -26,7 +26,7 @@ class BasicAdvancedForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
+    $config = $this->configFactory->get('auth0.settings');
 
     $form['auth0_form_title'] = array(
         '#type' => 'textfield',
@@ -77,14 +77,6 @@ class BasicAdvancedForm extends FormBase {
       '#button_type' => 'primary',
     );
     return $form;
-
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function validateForm(array &$form, FormStateInterface $form_state) {
-
   }
 
   /**
@@ -92,7 +84,7 @@ class BasicAdvancedForm extends FormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
 
-    $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
+    $config = $this->configFactory->getEditable('auth0.settings');
     $config->set('auth0_form_title', $form_state->getValue('auth0_form_title'))
             ->set('auth0_allow_signup', $form_state->getValue('auth0_allow_signup'))
             ->set('auth0_widget_cdn', $form_state->getValue('auth0_widget_cdn'))
@@ -101,5 +93,4 @@ class BasicAdvancedForm extends FormBase {
             ->set('auth0_lock_extra_settings', $form_state->getValue('auth0_lock_extra_settings'))
             ->save();
   }
-
 }
