@@ -206,9 +206,12 @@ function auth0_login_auth0_user($user_info, $id_token) {
   }
 
   // See if there is a user in the auth0_user table with the user info client id
+  function_exists('dd') && dd($user_info['user_id'], 'looking up drupal user by auth0 user_id');
   $uid = auth0_find_auth0_user($user_info['user_id']);
 
   if ($uid) {
+    function_exists('dd') && dd($uid, 'uid of existing drupal user found');
+
     // The user exists. Update the auth0_user with the new userInfo object.
     auth0_update_auth0_object($user_info);
 
@@ -219,6 +222,8 @@ function auth0_login_auth0_user($user_info, $id_token) {
     return auth0_authenticate_user($uid);
   }
   else {
+    function_exists('dd') && dd('existing drupal user NOT found');
+
     // If the user doesn't exist we need to either create a new one, or assign
     // him to an existing one.
     $isDatabaseUser = FALSE;
@@ -227,15 +232,23 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $isDatabaseUser = TRUE;
       }
     }
+    function_exists('dd') && dd($isDatabaseUser, 'isDatabaseUser');
     $joinUser = FALSE;
-    // If the user has a verified email or is a database user try to see if there is
-    // a user to join with. The isDatabase is because we don't want to allow database
-    // user creation if there is an existing one with no verified email.
-    if (!empty($user_info['email_verified']) || $isDatabaseUser) {
-      $joinUser = user_load_by_mail($user_info['email']);
+
+    if (variable_get('auth0_join_user_by_mail_enabled', FALSE)) {
+      function_exists('dd') && dd($user_info['email'], 'join user by mail is enabled, looking up user by email');
+      // If the user has a verified email or is a database user try to see if there is
+      // a user to join with. The isDatabase is because we don't want to allow database
+      // user creation if there is an existing one with no verified email.
+      if (!empty($user_info['email_verified']) || $isDatabaseUser) {
+        $joinUser = user_load_by_mail($user_info['email']);
+      }
+    } else {
+      function_exists('dd') && dd($user_info['email'], 'join user by mail is not enabled, skipping lookup user by email');
     }
 
     if ($joinUser) {
+      function_exists('dd') && dd($joinUser->uid, 'drupal user found by email with uid');
       // If we are here, we have a potential join user.
       // Don't allow creation or assignation of user if the email is not verified, that would
       // be hijacking.
@@ -251,10 +264,12 @@ function auth0_login_auth0_user($user_info, $id_token) {
         return drupal_set_message(t('Only site administrators can create new user accounts.'), 'error');
       }
       else {
+        function_exists('dd') && dd('creating new drupal user from auth0 user');
         $uid = auth0_create_user_from_auth0($user_info);
       }
     }
 
+    function_exists('dd') && dd($uid, 'inserting auth0 user with uid');
     auth0_insert_auth0_user($user_info, $uid);
 
     // Update field and role mappings
@@ -495,8 +510,10 @@ function auth0_create_user_from_auth0($user_info) {
 
   // If the username already exists, create a new random one.
   $username = $user_info['nickname'];
+  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 nickname');
   if (user_load_by_name($username)) {
     $username .= time();
+    function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
   }
   $user->name = $username;
   $user->is_new = TRUE;
@@ -509,6 +526,7 @@ function auth0_create_user_from_auth0($user_info) {
     $user->status = variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_VISITORS;
   }
   $user->pass = user_password();
+  function_exists('dd') && dd($user, 'saving new drupal user');
   $new_user = user_save($user);
 
   if ($user) {
@@ -615,6 +633,17 @@ function auth0_advanced_settings_form($form, &$form_state) {
     '#title' => t('Require an e-mail account'),
     '#default_value' => variable_get('auth0_requires_email', TRUE),
     '#description' => t('Require the user to have an e-mail address to login.'),
+  );
+
+  $form['auth0_join_user_by_mail_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Link auth0 logins to drupal users by email address'),
+    '#default_value' => variable_get('auth0_join_user_by_mail_enabled', FALSE),
+    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email 
+address of the Auth0 user to search for a drupal user with the same email address and setup a link to that 
+Drupal user account.
+<br/>If not enabled, then a new Drupal user will be created even if a Drupal user with the same email address already exists.
+'),
   );
 
   $form['auth0_sso'] = array(
@@ -835,12 +864,20 @@ function template_preprocess_auth0_lock(&$vars) {
   drupal_alter('auth0_params', $vars['params']);
 
   // Generate a link to a login form to be displayed as a no-js fallback.
-  $query = array(
-    'redirect_uri' => $vars['params']['callbackURL'],
-    'client_id' => $vars['client_id'],
-    'response_type' => 'code',
-    'state' => $vars['params']['authParams']['state']
+  if (isset($vars['params']['authParams']['state'])) {
+    $query = array(
+      'redirect_uri' => $vars['params']['callbackURL'],
+      'client_id' => $vars['client_id'],
+      'response_type' => 'code',
+      'state' => $vars['params']['authParams']['state']
     );
+  } else {
+    $query = array(
+      'redirect_uri' => $vars['params']['callbackURL'],
+      'client_id' => $vars['client_id'],
+      'response_type' => 'code'
+    );
+  }
   $vars['login_link'] = l(t('Log in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
 
   // Add the custom css if specified.
