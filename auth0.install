@@ -9,31 +9,31 @@
  * Implements hook_schema().
  */
 function auth0_schema() {
-  $schema['auth0_user'] = array(
+  $schema['auth0_user'] = [
     'description' => 'Joins auth0 users with drupal users.',
-    'fields' => array(
-      'auth0_id' => array(
+    'fields' => [
+      'auth0_id' => [
         'description' => 'The user id on auth0',
         'type' => 'varchar',
         'length' => 100,
         'not null' => TRUE,
-      ),
-      'drupal_id' => array(
+      ],
+      'drupal_id' => [
         'description' => 'The user id on drupal',
         'type' => 'int',
         'not null' => TRUE,
-      ),
-      'auth0_object' => array(
+      ],
+      'auth0_object' => [
         'description' => 'A serialized version of the auth0 user',
         'type' => 'text',
         'not null' => TRUE,
-      ),
-    ),
-    'indexes' => array(
-      'drupal_id' => array('drupal_id'),
-    ),
-    'primary key' => array('auth0_id'),
-  );
+      ],
+    ],
+    'indexes' => [
+      'drupal_id' => ['drupal_id'],
+    ],
+    'primary key' => ['auth0_id'],
+  ];
 
   return $schema;
 }
@@ -69,12 +69,12 @@ function auth0_install() {
  * Implements hook_uninstall().
  */
 function auth0_uninstall() {
-  variable_del('auth0_login_css');
-  variable_del('auth0_widget_cdn');
-  variable_del('auth0_form_title');
-  variable_del('auth0_requires_verified_email');
-  variable_del('auth0_allow_signup');
-  variable_del('auth0_domain');
-  variable_del('auth0_client_id');
-  variable_del('auth0_client_secret');
+  $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
+  $config->clear('auth0_login_css', $css)
+    ->clear('auth0_widget_cdn', 'https://cdn.auth0.com/js/lock/10.2/lock.min.js')
+    ->clear('auth0_form_title', 'Sign In')
+    ->clear('auth0_requires_verified_email', TRUE)
+    ->clear('auth0_allow_signup', TRUE)
+    ->clear('auth0_lock_extra_settings', '')
+    ->save();
 }

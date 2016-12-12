@@ -25,39 +25,37 @@ class BasicSettingsForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
+    $config = $this->configFactory->getEditable('auth0.settings');
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-
-    $form['auth0_client_id'] = array(
+    $form['auth0_client_id'] = [
       '#type' => 'textfield',
       '#title' => t('Client id'),
       '#default_value' => $config->get('auth0_client_id', ''),
       '#description' => t('Application id, copy from the auth0 dashboard.'),
       '#required' => TRUE,
-    );
-    $form['auth0_client_secret'] = array(
+    ];
+    $form['auth0_client_secret'] = [
       '#type' => 'textfield',
       '#title' => t('Client secret'),
       '#default_value' => $config->get('auth0_client_secret', ''),
       '#description' => t('Application secret, copy from the auth0 dashboard.'),
       '#required' => TRUE,
-    );
-    $form['auth0_domain'] = array(
+    ];
+    $form['auth0_domain'] = [
       '#type' => 'textfield',
       '#title' => t('Domain'),
       '#default_value' => $config->get('auth0_domain', ''),
       '#description' => t('Your Auth0 domain, you can see it in the auth0 dashboard.'),
       '#required' => TRUE,
-    );
+    ];
 
     $form['actions']['#type'] = 'actions';
-    $form['actions']['submit'] = array(
+    $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Save'),
       '#button_type' => 'primary',
-    );
+    ];
     return $form;
-
   }
 
   /**
@@ -81,12 +79,10 @@ class BasicSettingsForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-
-    $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
+    $config = $this->configFactory->getEditable('auth0.settings');
     $config->set('auth0_client_id', $form_state->getValue('auth0_client_id'))
             ->set('auth0_client_secret', $form_state->getValue('auth0_client_secret'))
             ->set('auth0_domain', $form_state->getValue('auth0_domain'))
             ->save();
   }
-
 }
