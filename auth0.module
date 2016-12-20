@@ -244,11 +244,14 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $joinUser = user_load_by_mail($user_info['email']);
       }
     } else {
-      function_exists('dd') && dd($user_info['email'], 'join user by mail is not enabled, skipping lookup user by email');
+      function_exists('dd') && dd($user_info['preferred_username'], 'join user by username');
+      if (!empty($user_info['email_verified']) || $isDatabaseUser) {
+        $joinUser = user_load_by_name($user_info['preferred_username']);
+      }
     }
 
     if ($joinUser) {
-      function_exists('dd') && dd($joinUser->uid, 'drupal user found by email with uid');
+      function_exists('dd') && dd($joinUser->uid, 'drupal user found with uid');
       // If we are here, we have a potential join user.
       // Don't allow creation or assignation of user if the email is not verified, that would
       // be hijacking.
@@ -509,8 +512,8 @@ function auth0_create_user_from_auth0($user_info) {
   $user->init = $email;
 
   // If the username already exists, create a new random one.
-  $username = $user_info['nickname'];
-  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 nickname');
+  $username = $user_info['preferred_username'];
+  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 preferred_username');
   if (user_load_by_name($username)) {
     $username .= time();
     function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
