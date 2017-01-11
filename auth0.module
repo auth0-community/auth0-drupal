@@ -881,7 +881,7 @@ function template_preprocess_auth0_lock(&$vars) {
       'response_type' => 'code'
     );
   }
-  $vars['login_link'] = l(t('Log in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
+  $vars['login_link'] = l(t('Sign in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
 
   // Add the custom css if specified.
   if ($css = variable_get("auth0_login_css", AUTH_LOGIN_CSS)) {
