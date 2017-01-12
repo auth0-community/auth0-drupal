@@ -1,0 +1,6 @@
+services:
+  authentication.auth0:
+    class: Drupal\auth0\Authentication\Provider\Auth0JWTAuthenticationProvider
+    arguments: ['@config.factory', '@entity_type.manager']
+    tags:
+      - { name: authentication_provider, provider_id: auth0_jwt }
