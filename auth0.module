@@ -662,6 +662,21 @@ Drupal user account.
     '#default_value' => variable_get('auth0_login_css', AUTH_LOGIN_CSS),
     '#description' => t('This CSS controls the widget look and feel.'),
   );
+  
+  $form['auth0_fallback_login_css'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Fallback Login Link CSS'),
+    '#default_value' => variable_get('auth0_fallback_login_css', 'font-weight: bold; font-size: 1.5em;'),
+    '#description' => t('This CSS controls the fallback login link look and feel.'),
+  );
+
+  $form['auth0_fallback_login_text'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Fallback Login Link Text'),
+    '#default_value' => variable_get('auth0_fallback_login_text', 'Sign In'),
+    '#description' => t('This is the text for the fallback login link.'),
+  );
+    
 // Add option to have the logout url at the application level or account level
   $form['auth0_returnTo_app'] = array(
     '#type' => 'checkbox',
@@ -881,7 +896,9 @@ function template_preprocess_auth0_lock(&$vars) {
       'response_type' => 'code'
     );
   }
-  $vars['login_link'] = l(t('Sign in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
+  
+  $vars['login_link'] = l(variable_get('auth0_fallback_login_text','Sign In'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
+  $vars['$login_link_css'] = variable_get('auth0_fallback_login_css', '');
 
   // Add the custom css if specified.
   if ($css = variable_get("auth0_login_css", AUTH_LOGIN_CSS)) {
