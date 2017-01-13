@@ -18,6 +18,13 @@ auth0.legacy_login:
   options:
     _maintenance_access: TRUE
 
+auth0.get_jwt:
+  path: '/user/jwt'
+  defaults:
+    _controller: '\Drupal\auth0\Controller\AuthController::getToken'
+  requirements:
+    _user_is_logged_in: 'TRUE'
+
 auth0.callback:
   path: '/auth0/callback'
   defaults:

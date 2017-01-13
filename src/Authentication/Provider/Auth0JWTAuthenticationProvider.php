@@ -4,6 +4,7 @@ namespace Drupal\auth0\Authentication\Provider;
 
 use Auth0\SDK\Exception\CoreException;
 use Auth0\SDK\JWTVerifier;
+use Drupal\auth0\Authentication\DrupalCacheProvider;
 use Drupal\Core\Authentication\AuthenticationProviderInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -77,7 +78,6 @@ class Auth0JWTAuthenticationProvider implements AuthenticationProviderInterface 
       $verifier = new JWTVerifier([
         'valid_audiences' => [$client_id],
         'client_secret' => $secret,
-        'secret_base64_encoded' => FALSE,
       ]);
 
       $decoded_token = $verifier->verifyAndDecode($token);
@@ -86,7 +86,7 @@ class Auth0JWTAuthenticationProvider implements AuthenticationProviderInterface 
       throw new AccessDeniedHttpException($e->getMessage());
     }
 
-    return $this->entityTypeManager->getStorage('user')->load($decoded_token->uid);
+    return $this->entityTypeManager->getStorage('user')->load($decoded_token->scopes->uid);
   }
 
   /**

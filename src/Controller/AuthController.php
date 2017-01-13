@@ -2,9 +2,11 @@
 
 namespace Drupal\auth0\Controller;
 
+use Auth0\SDK\API\Helpers\TokenGenerator;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Url;
 use Drupal\user\Entity\User;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -58,6 +60,23 @@ class AuthController extends ControllerBase {
       '#callbackURL' => "$base_root/auth0/callback",
     );
 
+  }
+
+  /**
+   * Handles the callback for the current user's JWT token.
+   */
+  public function getToken() {
+    $user = \Drupal::currentUser();
+    $config = \Drupal::service('config.factory')->get('auth0.settings');
+
+    $generator = new TokenGenerator([
+      'client_id' => $config->get('auth0_client_id'),
+      'client_secret' => $config->get('auth0_client_secret'),
+    ]);
+
+    return new JsonResponse($generator->generate([
+      'uid' => $user->getAccount()->id(),
+    ]));
   }
 
   /**
