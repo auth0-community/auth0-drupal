@@ -59,7 +59,8 @@ class Auth0JWTAuthenticationProvider implements AuthenticationProviderInterface 
    *   request, FALSE otherwise.
    */
   public function applies(Request $request) {
-    return !empty($request->headers->get('authorization'));
+    $authHeader = $request->headers->get('authorization');
+    return !empty($authHeader) && strpos($authHeader, 'Bearer') === 0;
   }
 
   /**
