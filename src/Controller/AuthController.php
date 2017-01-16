@@ -18,7 +18,7 @@ use Drupal\auth0\Event\Auth0UserSignupEvent;
 use Drupal\auth0\Exception\EmailNotSetException;
 use Drupal\auth0\Exception\EmailNotVerifiedException;
 
-use Auth0SDK\Auth0;
+use Auth0\SDK\Auth0;
 
 /**
  * Controller routines for auth0 authentication.
@@ -98,7 +98,7 @@ class AuthController extends ControllerBase {
     $userInfo = NULL;
 
     try {
-      $userInfo = $auth0->getUserInfo();
+      $userInfo = $auth0->getUser();
       $idToken = $auth0->getIdToken();
     }
     catch (\Exception $e) {
