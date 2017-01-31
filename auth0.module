@@ -171,11 +171,13 @@ function auth0_callback() {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
   }
 
-  
   $request = drupal_parse_url($_SERVER['HTTP_REFERER']);
-  $path = $request['destination'];
-  function_exists('dd') && dd($path);
+  function_exists('dd') && dd($request);
+  $query = $request['query'];
+  $path = $query['destination'];
+    
   return drupal_goto($path);
+  
 }
 
 /**
