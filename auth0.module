@@ -45,7 +45,6 @@ function auth0_menu() {
     'weight' => 100,
   );
 
-
   // Add an admin configuration page.
   $items['admin/config/people/auth0'] = array(
     'title' => 'Auth0 Login Settings',
@@ -325,15 +324,26 @@ function auth0_update_fields($user_info, $uid, $the_user, &$edit)
       if (in_array($key, $skip_mappings)) {
         function_exists('dd') && dd($mapping, 'skipping mapping handled already by auth0 module');
       } else {
-        $value = isset($user_info[$mapping[0]]) ? $user_info[$mapping[0]] : '';
-        //array()[LANGUAGE_NONE][0]['value'] = 'foo';
-        $edit[$key] = array(
-          LANGUAGE_NONE => array(
-            0 => array(
-              'value' => $value
-            )
-          )
-        );
+        $items = isset($user_info[$mapping[0]]) ? $user_info[$mapping[0]] : '';
+
+        // If we have a singular value let's make it into a one-element array
+        if (!is_array($items)) {
+          $items = array($items);
+        }
+
+        // Instantiate a base value array
+        $value = array(LANGUAGE_NONE => array());
+
+        // Loop through and add our values
+        foreach ($items as $index => $item) {
+          $value[LANGUAGE_NONE][$index] = array(
+            'value' => $item
+          );
+        }
+
+        // Assign the key and value
+        $edit[$key] = $value;
+
       }
     }
   }
@@ -639,8 +649,8 @@ function auth0_advanced_settings_form($form, &$form_state) {
     '#type' => 'checkbox',
     '#title' => t('Link auth0 logins to drupal users by email address'),
     '#default_value' => variable_get('auth0_join_user_by_mail_enabled', FALSE),
-    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email 
-address of the Auth0 user to search for a drupal user with the same email address and setup a link to that 
+    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email
+address of the Auth0 user to search for a drupal user with the same email address and setup a link to that
 Drupal user account.
 <br/>If not enabled, then a new Drupal user will be created even if a Drupal user with the same email address already exists.
 '),
@@ -714,7 +724,7 @@ Drupal user account.
 <br/>admin|administrator
 <br/>poweruser|power users
 <br/>
-<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.  
+<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.
 Drupal roles not listed above will not be changed by this module.
 ')
   );
