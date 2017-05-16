@@ -1109,7 +1109,7 @@ function auth0_enabled($operation = '') {
  * Check that the dependencies were autoloaded.
  */
 function auth0_check_dependencies() {
-  if (class_exists('\Auth0SDK\Auth0')) {
+  if (class_exists('\Auth0\SDK\Auth0')) {
     return TRUE;
   }
   if (file_exists(DRUPAL_ROOT . '/' . drupal_get_path('module', 'auth0') . '/vendor/autoload.php')) {
