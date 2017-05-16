@@ -509,14 +509,9 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
   }
 }
 
-function auth0_mappingsToPipeList($mappings) {
-    $result_text = "";
-    foreach ($mappings as $map) {
-        $result_text .= $map['from'] . '|' . $map['user_entered'] . "\n";
-    }
-    return $result_text;
-}
-
+/**
+ * Get the piped list as an array.
+ */
 function auth0_pipeListToArray($mapping_list_txt, $make_item0_lowercase = FALSE) {
     $result_array = array();
     $mappings = preg_split('/[\n\r]+/', $mapping_list_txt);
@@ -528,7 +523,6 @@ function auth0_pipeListToArray($mapping_list_txt, $make_item0_lowercase = FALSE)
     }
     return $result_array;
 }
-
 
 /**
  * Authenticate the given user.
