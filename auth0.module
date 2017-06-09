@@ -174,7 +174,15 @@ function auth0_callback() {
   $request = drupal_parse_url($_SERVER['HTTP_REFERER']);
   function_exists('dd') && dd($request);
   $query = $request['query'];
-  $path = $query['destination'];
+  if (array_key_exists('destination',$query))
+  {
+    $path = $query['destination'];
+  }
+  else
+  {
+    $path = '/';
+  }
+  
     
   return drupal_goto($path);
   
@@ -195,6 +203,7 @@ function auth0_fail_with_verify_email($id_token) {
 function auth0_login_auth0_user($user_info, $id_token) {
   $requires_email = variable_get('auth0_requires_email', TRUE);
   $requires_verified_email = $requires_email && variable_get('user_email_verification', TRUE);
+  $user_name_claim = variable_get('auth0_username_claim', 'nickname');
 
   // Allow other modules to modify the Auth0 user before processing the login.
   drupal_alter('auth0_user_pre_login', $user_info, $id_token);
@@ -250,9 +259,9 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $joinUser = user_load_by_mail($user_info['email']);
       }
     } else {
-      function_exists('dd') && dd($user_info['preferred_username'], 'join user by username');
+      function_exists('dd') && dd($user_info[$user_name_claim], 'join user by username');
       if (!empty($user_info['email_verified']) || $isDatabaseUser) {
-        $joinUser = user_load_by_name($user_info['preferred_username']);
+        $joinUser = user_load_by_name($user_info[$user_name_claim]);
       }
     }
 
@@ -518,8 +527,9 @@ function auth0_create_user_from_auth0($user_info) {
   $user->init = $email;
 
   // If the username already exists, create a new random one.
-  $username = $user_info['preferred_username'];
-  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 preferred_username');
+  
+  $username = $user_info[$user_name_claim];
+  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 ' . $user_name_claim);
   if (user_load_by_name($username)) {
     $username .= time();
     function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
@@ -655,6 +665,13 @@ Drupal user account.
 '),
   );
 
+  $form['auth0_username_claim'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Map Auth0 claim to Drupal user name.'),
+    '#default_value' => t('nickname'),
+    '#description' => t('Maps the given claim field as the Drupal user name field. The default is the nickname claim'),
+  );
+  
   $form['auth0_sso'] = array(
     '#type' => 'checkbox',
     '#title' => t('SSO enabled'),
