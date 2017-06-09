@@ -178,7 +178,10 @@ function auth0_callback() {
   {
     $path = $query['destination'];
   }
-  else
+  elseif (array_key_exists('current',$query))
+  {
+    $path = $query['current'];
+  } else 
   {
     $path = '/';
   }
