@@ -174,11 +174,11 @@ function auth0_callback() {
   $request = drupal_parse_url($_SERVER['HTTP_REFERER']);
   function_exists('dd') && dd($request);
   $query = $request['query'];
-  if (array_key_exists('destination',$query))
+  if (isset($query['destination']))
   {
     $path = $query['destination'];
   }
-  elseif (array_key_exists('current',$query))
+  elseif (isset($query['current']))
   {
     $path = $query['current'];
   } else 
