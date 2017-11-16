@@ -42,7 +42,6 @@ function auth0_schema() {
  * Implements hook_install().
  */
 function auth0_install() {
-  drupal_install_schema('auth0_user_services');
   $css = "
 #a0-widget .a0-panel {
     min-width: 90%;
