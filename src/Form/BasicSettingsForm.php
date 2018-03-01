@@ -61,7 +61,7 @@ class BasicSettingsForm extends FormBase {
         'HS256' => $this->t('HS256'),
         'RS256' => $this->t('RS256'),
       ],
-      '#default_value' => $config->get('auth0_jwt_signature_alg', 'HS256'),
+      '#default_value' => $config->get('auth0_jwt_signature_alg', AUTH0_DEFAULT_SIGNING_ALGORITHM),
       '#description' => t('Your JWT Signing Algorithm for the ID token.  RS256 is recommended, but must be set in the advanced settings under oauth for this client.'),
       '#required' => TRUE,
     );

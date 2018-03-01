@@ -8,6 +8,8 @@ namespace Drupal\auth0\Util;
 
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\API\Authentication;
+use Auth0\SDK\Exception\CoreException;
+use Auth0\SDK\Exception\InvalidTokenException;
 
 /**
  * Controller routines for auth0 authentication.
@@ -41,7 +43,10 @@ class AuthHelper {
     $this->client_id = $this->config->get(AuthHelper::AUTH0_CLIENT_ID);
     $this->client_secret = $this->config->get(AuthHelper::AUTH0_CLIENT_SECRET);
     $this->redirect_for_sso = $this->config->get(AuthHelper::AUTH0_REDIRECT_FOR_SSO);
-    $this->auth0_jwt_signature_alg = $this->config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM);
+    $this->auth0_jwt_signature_alg = $this->config->get(
+      AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM,
+      AUTH0_DEFAULT_SIGNING_ALGORITHM
+    );
     $this->secret_base64_encoded = FALSE || $this->config->get(AuthHelper::AUTH0_SECRET_ENCODED);
   }
 
@@ -71,14 +76,15 @@ class AuthHelper {
 
   /**
    * Validate the ID token
-   * @param $idToken the ID token to validate
-   * @return user an array of named claims from the ID token
-   * @throws invalid token exception if the token is invalid, otherwise returns user
+   *
+   * @param string $idToken - the ID token to validate
+   *
+   * @return object
+   *
+   * @throws CoreException
+   * @throws InvalidTokenException
    */
   public function validateIdToken($idToken) {
-    /**
-     * Validate the ID Token
-     */
     $auth0_domain = 'https://' . $this->domain . '/';
     $auth0_settings = array();
     $auth0_settings['authorized_iss'] = [$auth0_domain];

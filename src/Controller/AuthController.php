@@ -309,8 +309,18 @@ class AuthController extends ControllerBase {
       }
     }
   }
+
   /**
-   * Process the auth0 user profile and signin or signup the user.
+   * Process the Auth0 user profile and sign in or sign the user up
+   *
+   * @param Request $request
+   * @param array $userInfo - array of user data from an ID token or /userinfo endpoint
+   * @param string $idToken - ID token received during code exchange
+   * @param string $refreshToken - refresh token
+   * @param int $expiresAt - token expiration
+   * @param string $returnTo - return URL
+   *
+   * @return RedirectResponse
    */
   protected function processUserLogin(Request $request, $userInfo, $idToken, $refreshToken, $expiresAt, $returnTo) {
   	\Drupal::logger('auth0')->notice('process user login');
@@ -347,7 +357,7 @@ class AuthController extends ControllerBase {
       \Drupal::logger('auth0')->notice('existing drupal user NOT found');
 
       try {
-        $user = $this->signupUser($userInfo, $idToken);
+        $user = $this->signupUser($userInfo);
       }
       catch (EmailNotVerifiedException $e) {
         return $this->auth0FailWithVerifyEmail($idToken);
@@ -380,32 +390,33 @@ class AuthController extends ControllerBase {
 
   /**
    * Create or link a new user based on the auth0 profile.
+   *
+   * @param array $userInfo - userinfo from an ID token or the /userinfo endpoint
+   * @param string $idToken - DEPRECATED
+   *
+   * @return bool|\Drupal\Core\Entity\EntityInterface|object|static
+   * @throws EmailNotVerifiedException
    */
-  protected function signupUser($userInfo, $idToken) {
+  protected function signupUser($userInfo, $idToken = '') {
     // If the user doesn't exist we need to either create a new one, or assign him to an existing one.
     $isDatabaseUser = FALSE;
 
-    /* Make sure we have the identities array, if not, fetch it from the user endpoint */
-    $hasIdentities = (is_object($userInfo) && $userInfo->has('identities')) ||
-      (is_array($userInfo) && array_key_exists('identities', $userInfo));
-    if (!$hasIdentities) {
-      $mgmtClient = new Management($idToken, $this->domain);
+    $user_sub = ! empty( $userInfo['sub'] ) ? $userInfo['sub'] : $userInfo['user_id'];
+    $user_sub_arr = explode( '|', $user_sub );
+    $provider = $user_sub_arr[0];
 
-      $user = $mgmtClient->users->get($userInfo['user_id']);
-      $userInfo['identities'] = $user['identities'];
-    }
-
-    foreach ($userInfo['identities'] as $identity) {
-      if ($identity['provider'] == "auth0") {
-        $isDatabaseUser = TRUE;
-      }
+    if ('auth0' === $provider) {
+      $isDatabaseUser = TRUE;
     }
     
     $joinUser = false;
 
     $config = \Drupal::service('config.factory')->get('auth0.settings');
     $user_name_claim = $config->get('auth0_username_claim');
-    if ($user_name_claim == '') $user_name_claim = 'nickname';
+    if ($user_name_claim == '') {
+      $user_name_claim = 'nickname';
+    }
+    $user_name_used = ! empty( $userInfo[$user_name_claim] ) ? $userInfo[$user_name_claim] : $userInfo['sub'];
     
     if ($config->get('auth0_join_user_by_mail_enabled')) {
       \Drupal::logger('auth0')->notice($userInfo['email'] . 'join user by mail is enabled, looking up user by email');
@@ -416,10 +427,10 @@ class AuthController extends ControllerBase {
         $joinUser = user_load_by_mail($userInfo['email']);
       }
     } else {
-      \Drupal::logger('auth0')->notice($userInfo[$user_name_claim] . 'join user by username');
+      \Drupal::logger('auth0')->notice($user_name_used . ' join user by username');
 
-   	  if (!empty($user_info['email_verified']) || $isDatabaseUser) {
-   	    $joinUser = user_load_by_name($userInfo[$user_name_claim]);
+   	  if (!empty($userInfo['email_verified']) || $isDatabaseUser) {
+   	    $joinUser = user_load_by_name($user_name_used);
       }
     }
 
@@ -435,7 +446,7 @@ class AuthController extends ControllerBase {
       $user = $joinUser;
     }
     else {
-      \Drupal::logger('auth0')->notice($userInfo[$user_name_claim].' creating new drupal user from auth0 user');
+      \Drupal::logger('auth0')->notice($user_name_used.' creating new drupal user from auth0 user');
 
       // If we are here, we need to create the user.
       $user = $this->createDrupalUser($userInfo);
@@ -645,14 +656,16 @@ class AuthController extends ControllerBase {
   protected function createDrupalUser($userInfo) {
     $config = \Drupal::service('config.factory')->get('auth0.settings');
     $user_name_claim = $config->get('auth0_username_claim');
-    if ($user_name_claim == '') $user_name_claim = 'nickname';
-    
+    if ($user_name_claim == '') {
+      $user_name_claim = 'nickname';
+    }
+
     $user = User::create();
 
     $user->setPassword($this->generatePassword(16));
     $user->enforceIsNew();
 
-    if (isset($userInfo['email']) && !empty($userInfo['email'])) {
+    if (!empty($userInfo['email'])) {
       $user->setEmail($userInfo['email']);
     }
     else {
@@ -660,7 +673,7 @@ class AuthController extends ControllerBase {
     }
 
     // If the username already exists, create a new random one.
-    $username = $userInfo[$user_name_claim];
+    $username = ! empty( $userInfo[$user_name_claim] ) ? $userInfo[$user_name_claim] : $userInfo['sub'];
     if (user_load_by_name($username)) {
       $username .= time();
     }
