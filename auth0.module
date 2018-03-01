@@ -4,9 +4,8 @@
  * Module definition
  */
 
-use Drupal\auth0\Util;
+define( 'AUTH0_DEFAULT_SIGNING_ALGORITHM', 'RS256' );
 
- 
 /**
  * Replace a form with the lock widget.
  */
@@ -30,7 +29,7 @@ function auth0_theme() {
 }
 
 /**
- * Handle users deletion, it shoudl delete the auth0 profile.
+ * Handle users deletion, it should delete the Auth0 profile.
  */
 function auth0_user_delete($account) {
   db_delete('auth0_user')
