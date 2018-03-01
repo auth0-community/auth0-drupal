@@ -146,7 +146,7 @@ class AuthController extends ControllerBase {
   /**
    * Create a new nonce in session and return it
    */
-  protected function getNonce($returnTo) {
+  protected function getNonce($returnTo = '') {
     // Have to start the session after putting something into the session, or we don't actually start it!
     if (!$this->sessionManager->isStarted() && !isset($_SESSION['auth0_is_session_started'])) {
       $_SESSION['auth0_is_session_started'] = 'yes';
@@ -158,7 +158,7 @@ class AuthController extends ControllerBase {
     $states = $this->tempStore->get(AuthController::STATE);
     if (!is_array($states)) $states = array();
     $nonce = base64_encode($generator->generate(32));
-    $states[$nonce] = $returnTo === null ? '' : $returnTo;
+    $states[$nonce] = $returnTo;
     $this->tempStore->set(AuthController::STATE, $states);
     
     return $nonce;
