@@ -1,0 +1,9 @@
+auth0.lock:
+  version: 1.x
+  js:
+    js/auth0.lock.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - auth0/auth0.widget
