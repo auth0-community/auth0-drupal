@@ -1,0 +1,4 @@
+services:
+  auth0.helper:
+    class: Drupal\auth0\Auth0Helper
+    arguments: ['@config.factory', '@session_manager', '@user.private_tempstore', '@logger.factory', '@database']
