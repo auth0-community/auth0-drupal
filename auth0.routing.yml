@@ -5,6 +5,7 @@ auth0.login:
     _title: 'Log in'
   requirements:
     _access: 'TRUE'
+    _user_is_logged_in: 'FALSE'
   options:
     _maintenance_access: TRUE
 
@@ -15,6 +16,7 @@ auth0.legacy_login:
     _title: 'Log in'
   requirements:
     _access: 'TRUE'
+    _user_is_logged_in: 'FALSE'
   options:
     _maintenance_access: TRUE
 
