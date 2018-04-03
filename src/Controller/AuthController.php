@@ -193,7 +193,7 @@ class AuthController extends ControllerBase {
     $connection = null;
     $state = $this->getNonce($returnTo);
     $additional_params = [];
-    $additional_params['scope'] = 'openid profile email nickname';
+    $additional_params['scope'] = 'openid email email_verified profile nickname name';
     if ($this->offlineAccess) $additional_params['scope'] .= ' offline_access';
     if ($prompt) $additional_params['prompt'] = $prompt;
 
@@ -416,7 +416,10 @@ class AuthController extends ControllerBase {
     if ($user_name_claim == '') {
       $user_name_claim = 'nickname';
     }
-    $user_name_used = ! empty( $userInfo[$user_name_claim] ) ? $userInfo[$user_name_claim] : $userInfo['sub'];
+    $user_name_used = ! empty( $userInfo[ $user_name_claim ] )
+      ? $userInfo[ $user_name_claim ] :
+      // Drupal usernames do not allow pipe characters
+      str_replace( '|', '_', $userInfo['sub'] );
     
     if ($config->get('auth0_join_user_by_mail_enabled')) {
       \Drupal::logger('auth0')->notice($userInfo['email'] . 'join user by mail is enabled, looking up user by email');
