@@ -28,6 +28,7 @@ use Drupal\auth0\Event\Auth0UserSigninEvent;
 use Drupal\auth0\Event\Auth0UserSignupEvent;
 use Drupal\auth0\Exception\EmailNotSetException;
 use Drupal\auth0\Exception\EmailNotVerifiedException;
+use Drupal\auth0\Util\AuthHelper;
 
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\Auth0;
@@ -74,6 +75,8 @@ class AuthController extends ControllerBase {
     // Ensure the pages this controller servers never gets cached
     \Drupal::service('page_cache_kill_switch')->trigger();
 
+    $this->helper = new AuthHelper();
+
     $this->eventDispatcher = \Drupal::service('event_dispatcher');
     $this->tempStore = $tempStoreFactory->get(AuthController::SESSION);
     $this->sessionManager = $sessionManager;
@@ -86,7 +89,7 @@ class AuthController extends ControllerBase {
     $this->auth0_jwt_signature_alg = $this->config->get(AuthController::AUTH0_JWT_SIGNING_ALGORITHM);
     $this->secret_base64_encoded = FALSE || $this->config->get(AuthController::AUTH0_SECRET_ENCODED);
     $this->offlineAccess = FALSE || $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
-    $this->helper = new \Drupal\auth0\Util\AuthHelper();
+
     $this->auth0 = FALSE;
   }
 
@@ -138,6 +141,7 @@ class AuthController extends ControllerBase {
       '#loginCSS' => $config->get('auth0_login_css'),
       '#lockExtraSettings' => $lockExtraSettings,
       '#callbackURL' => "$base_root/auth0/callback",
+      '#scopes' => AUTH0_DEFAULT_SCOPES,
     );
   }
 
@@ -193,7 +197,7 @@ class AuthController extends ControllerBase {
     $connection = null;
     $state = $this->getNonce($returnTo);
     $additional_params = [];
-    $additional_params['scope'] = 'openid email email_verified profile nickname name';
+    $additional_params['scope'] = AUTH0_DEFAULT_SCOPES;
     if ($this->offlineAccess) $additional_params['scope'] .= ' offline_access';
     if ($prompt) $additional_params['prompt'] = $prompt;
 
@@ -279,7 +283,7 @@ class AuthController extends ControllerBase {
     if ($userInfo['sub'] != $user->sub) {
       return $this->failLogin(t('There was a problem logging you in, sorry for the inconvenience.'), 
         'Failed to verify the JWT sub.');
-    } elseif (array_key_exists('sub', $userInfo)) {
+    } elseif (empty( $userInfo['user_id'] )) {
       $userInfo['user_id'] = $userInfo['sub'];
     }
 
@@ -329,8 +333,7 @@ class AuthController extends ControllerBase {
       $this->validateUserEmail($userInfo);
     }
     catch (EmailNotSetException $e) {
-      return $this->failLogin(t('This account does not have an email associated. Please login with a different provider.'), 
-        'No Email Found');
+      return $this->failLogin(t('This account does not have an email associated. Please login with a different provider.'), 'No Email Found');
     }
     catch (EmailNotVerifiedException $e) {
       return $this->auth0FailWithVerifyEmail($idToken);
@@ -392,9 +395,10 @@ class AuthController extends ControllerBase {
    * Create or link a new user based on the auth0 profile.
    *
    * @param array $userInfo - userinfo from an ID token or the /userinfo endpoint
-   * @param string $idToken - DEPRECATED
+   * @param string $idToken - ID token returned during login
    *
-   * @return bool|\Drupal\Core\Entity\EntityInterface|object|static
+   * @return mixed
+   *
    * @throws EmailNotVerifiedException
    */
   protected function signupUser($userInfo, $idToken = '') {
