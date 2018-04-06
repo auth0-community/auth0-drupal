@@ -54,17 +54,17 @@ class BasicSettingsForm extends FormBase {
       '#description' => t('Your Auth0 domain, you can see it in the auth0 dashboard.'),
       '#required' => TRUE,
     );
-    $form['auth0_jwt_signature_alg'] = array(
+    $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = array(
       '#type' => 'select',
       '#title' => t('JWT Signature Algorithm'),
       '#options' => [
         'HS256' => $this->t('HS256'),
         'RS256' => $this->t('RS256'),
       ],
-      '#default_value' => $config->get('auth0_jwt_signature_alg')
-        ? $config->get('auth0_jwt_signature_alg')
+      '#default_value' => $config->get( AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM )
+        ? $config->get( AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM )
         : AUTH0_DEFAULT_SIGNING_ALGORITHM,
-      '#description' => t('Your JWT Signing Algorithm for the ID token.  RS256 is recommended, but must be set in the advanced settings under oauth for this client.'),
+      '#description' => t('Your JWT Signing Algorithm for the ID token. RS256 is recommended and must be set in the advanced settings for this client under the OAuth tab.'),
       '#required' => TRUE,
     );
 
@@ -94,8 +94,8 @@ class BasicSettingsForm extends FormBase {
       $form_state->setErrorByName('auth0_domain', $this->t('Please complete your Auth0 domain'));
     }
 
-    if (empty($form_state->getValue('auth0_jwt_signature_alg'))) {
-      $form_state->setErrorByName('auth0_jwt_signature_alg', $this->t('Please complete your Auth0 Signature Algorithm'));
+    if (empty($form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))) {
+      $form_state->setErrorByName(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $this->t('Please complete your Auth0 Signature Algorithm'));
     }
   }
 
@@ -108,7 +108,7 @@ class BasicSettingsForm extends FormBase {
     $config->set('auth0_client_id', $form_state->getValue('auth0_client_id'))
             ->set('auth0_client_secret', $form_state->getValue('auth0_client_secret'))
             ->set('auth0_domain', $form_state->getValue('auth0_domain'))
-            ->set('auth0_jwt_signature_alg', $form_state->getValue('auth0_jwt_signature_alg'))
+            ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
             ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
             ->save();
   }

@@ -11,7 +11,7 @@
     lock_options.auth.redirectUrl = lock_options.auth.redirectUrl || '{{callbackURL}}';
     lock_options.auth.responseType = lock_options.auth.responseType || 'code';
     lock_options.auth.params = lock_options.auth.params || {};
-    lock_options.auth.params.scope = lock_options.auth.params.scope || 'openid email email_verified profile nickname name';
+    lock_options.auth.params.scope = lock_options.auth.params.scope || '{{scopes}}';
     lock_options.auth.params.state = '{{state}}';
 
     if ('{{ offlineAccess }}' === 'TRUE') {

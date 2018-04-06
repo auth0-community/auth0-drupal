@@ -79,10 +79,11 @@ class AuthHelper {
    *
    * @param string $idToken - the ID token to validate
    *
-   * @return object
+   * @return mixed
    *
    * @throws CoreException
    * @throws InvalidTokenException
+   * @throws \Exception
    */
   public function validateIdToken($idToken) {
     $auth0_domain = 'https://' . $this->domain . '/';
