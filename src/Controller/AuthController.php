@@ -223,6 +223,7 @@ class AuthController extends ControllerBase {
    */
   public function callback(Request $request) {
     global $base_root;
+    $problem_logging_in_msg = t('There was a problem logging you in, sorry for the inconvenience.');
 
     $returnTo = null;
     $response = $this->checkForError($request, $returnTo);
@@ -254,8 +255,10 @@ class AuthController extends ControllerBase {
       $idToken = $this->auth0->getIdToken();
     }
     catch (\Exception $e) {
-      return $this->failLogin(t('There was a problem logging you in, sorry for the inconvenience.'), 
-        'Failed to exchange code for tokens: ' . $e->getMessage());
+      return $this->failLogin(
+        $problem_logging_in_msg,
+        t( 'Failed to exchange code for tokens' ) . ': ' . $e->getMessage()
+      );
     }
 
     if ($this->offlineAccess) {
@@ -264,36 +267,33 @@ class AuthController extends ControllerBase {
       }
       catch (\Exception $e) {
         // Do NOT fail here, just log the error
-        \Drupal::logger('auth0')->warning('Failed getting refresh token because: ' . $e->getMessage());
+        \Drupal::logger('auth0')->warning( t( 'Failed getting refresh token' ) . ': ' . $e->getMessage());
       }
     }
 
     try {
       $user = $this->helper->validateIdToken($idToken);
     }
-    catch(CoreException $e) {
-      return $this->failLogin(t('There was a problem logging you in, sorry for the inconvenience.'), 
-        'Failed to verify and decode the JWT: ' . $e->getMessage());
-    }
-
-
-    /**
-     * Check the sub if it exists (this will exist if you have enabled OIDC Conformant)
-     */
-    if ($userInfo['sub'] != $user->sub) {
-      return $this->failLogin(t('There was a problem logging you in, sorry for the inconvenience.'), 
-        'Failed to verify the JWT sub.');
-    } elseif (empty( $userInfo['user_id'] )) {
-      $userInfo['user_id'] = $userInfo['sub'];
+    catch(\Exception $e) {
+      return $this->failLogin( $problem_logging_in_msg, t( 'Failed to validate JWT' ). ': ' . $e->getMessage());
     }
 
     if ($userInfo) {
+
+      if ( empty( $userInfo['sub'] ) && ! empty( $userInfo['user_id'] ) ) {
+        $userInfo['sub'] = $userInfo['user_id'];
+      } elseif ( empty( $userInfo['user_id'] ) && ! empty( $userInfo['sub'] ) ) {
+        $userInfo['user_id'] = $userInfo['sub'];
+      }
+
+      if ( $userInfo['sub'] != $user->sub ) {
+        return $this->failLogin( $problem_logging_in_msg, t( 'Failed to verify JWT sub' ) );
+      }
+
     	\Drupal::logger('auth0')->notice('Good Login');
       return $this->processUserLogin($request, $userInfo, $idToken, $refreshToken, $user->exp, $returnTo);
-    }
-    else {
-      return $this->failLogin(t('There was a problem logging you in, sorry for the inconvenience.'), 
-        'No userInfo found');
+    } else {
+      return $this->failLogin( $problem_logging_in_msg, 'No userinfo found' );
     }
   }
 
@@ -405,8 +405,7 @@ class AuthController extends ControllerBase {
     // If the user doesn't exist we need to either create a new one, or assign him to an existing one.
     $isDatabaseUser = FALSE;
 
-    $user_sub = ! empty( $userInfo['sub'] ) ? $userInfo['sub'] : $userInfo['user_id'];
-    $user_sub_arr = explode( '|', $user_sub );
+    $user_sub_arr = explode( '|', $userInfo['user_id'] );
     $provider = $user_sub_arr[0];
 
     if ('auth0' === $provider) {
@@ -423,9 +422,9 @@ class AuthController extends ControllerBase {
     $user_name_used = ! empty( $userInfo[ $user_name_claim ] )
       ? $userInfo[ $user_name_claim ] :
       // Drupal usernames do not allow pipe characters
-      str_replace( '|', '_', $userInfo['sub'] );
+      str_replace( '|', '_', $userInfo['user_id'] );
     
-    if ($config->get('auth0_join_user_by_mail_enabled')) {
+    if ( $config->get('auth0_join_user_by_mail_enabled') && ! empty( $userInfo['email'] ) ) {
       \Drupal::logger('auth0')->notice($userInfo['email'] . 'join user by mail is enabled, looking up user by email');
       // If the user has a verified email or is a database user try to see if there is
       // a user to join with. The isDatabase is because we don't want to allow database
@@ -680,7 +679,7 @@ class AuthController extends ControllerBase {
     }
 
     // If the username already exists, create a new random one.
-    $username = ! empty( $userInfo[$user_name_claim] ) ? $userInfo[$user_name_claim] : $userInfo['sub'];
+    $username = ! empty( $userInfo[$user_name_claim] ) ? $userInfo[$user_name_claim] : $userInfo['user_id'];
     if (user_load_by_name($username)) {
       $username .= time();
     }
