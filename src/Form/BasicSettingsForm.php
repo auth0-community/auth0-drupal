@@ -7,6 +7,7 @@ namespace Drupal\auth0\Form;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\auth0\Util\AuthHelper;
 
 /**
  * This forms handles the basic module configurations.
@@ -54,7 +55,7 @@ class BasicSettingsForm extends FormBase {
       '#description' => t('Your Auth0 domain, you can see it in the auth0 dashboard.'),
       '#required' => TRUE,
     );
-    $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = array(
+    $form[ AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM ] = array(
       '#type' => 'select',
       '#title' => t('JWT Signature Algorithm'),
       '#options' => [
