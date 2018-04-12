@@ -6,200 +6,241 @@
 
 namespace Drupal\auth0\Controller;
 
-// Create a variable to store the path to this module and load vendor files if they exist
-define('AUTH0_PATH', drupal_get_path('module', 'auth0'));
-
-if (file_exists(AUTH0_PATH . '/vendor/autoload.php')) {
-  require_once (AUTH0_PATH . '/vendor/autoload.php');
-}
-
 use Drupal\Core\Controller\ControllerBase;
+use GuzzleHttp\Client;
 use Drupal\Core\Url;
-use Drupal\user\Entity\User;
-use Drupal\user\PrivateTempStoreFactory;
-use Drupal\Core\Session\SessionManagerInterface;
 use Drupal\Core\Routing\TrustedRedirectResponse;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\PageCache\ResponsePolicyInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Auth0\Auth0Helper;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 use Drupal\auth0\Event\Auth0UserSigninEvent;
 use Drupal\auth0\Event\Auth0UserSignupEvent;
+
 use Drupal\auth0\Exception\EmailNotSetException;
 use Drupal\auth0\Exception\EmailNotVerifiedException;
-use Drupal\auth0\Util\AuthHelper;
 
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\Auth0;
 use Auth0\SDK\API\Authentication;
-use Auth0\SDK\API\Management;
-use Auth0\SDK\Exception\CoreException;
-use Auth0\SDK\API\Helpers\State\SessionStateHandler;
-use Auth0\SDK\Store\SessionStore;
 
 /**
- * Controller routines for auth0 authentication.
+ * Controller routines for Auth0 authentication.
  */
 class AuthController extends ControllerBase {
-  const SESSION = 'auth0';
-  const STATE = 'state';
-  const AUTH0_LOGGER = 'auth0_controller';
-  const AUTH0_DOMAIN = 'auth0_domain';
-  const AUTH0_CLIENT_ID = 'auth0_client_id';
-  const AUTH0_CLIENT_SECRET = 'auth0_client_secret';
-  const AUTH0_REDIRECT_FOR_SSO = 'auth0_redirect_for_sso';
-  const AUTH0_JWT_SIGNING_ALGORITHM = 'auth0_jwt_signature_alg';
-  const AUTH0_SECRET_ENCODED = 'auth0_secret_base64_encoded';
-  const AUTH0_OFFLINE_ACCESS = 'auth0_allow_offline_access';
-  
-  protected $eventDispatcher;
-  protected $tempStore;
-  protected $sessionManager;
-  protected $logger;
-  protected $config;
-  protected $domain;
-  protected $client_id;
-  protected $client_secret;
-  protected $redirect_for_sso;
-  protected $auth0_jwt_signature_alg;
-  protected $secret_base64_encoded;
-  protected $offlineAccess;
-  protected $helper;
-  protected $auth0;
 
   /**
-   * Initialize the controller.
+   * The event dispatcher.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
    */
-  public function __construct(PrivateTempStoreFactory $tempStoreFactory, SessionManagerInterface $sessionManager) {
-    // Ensure the pages this controller servers never gets cached
-    \Drupal::service('page_cache_kill_switch')->trigger();
+  protected $eventDispatcher;
 
-    $this->helper = new AuthHelper();
+  /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $config;
 
-    $this->eventDispatcher = \Drupal::service('event_dispatcher');
-    $this->tempStore = $tempStoreFactory->get(AuthController::SESSION);
-    $this->sessionManager = $sessionManager;
-    $this->logger = \Drupal::logger(AuthController::AUTH0_LOGGER);
-    $this->config = \Drupal::service('config.factory')->get('auth0.settings');
-    $this->domain = $this->config->get(AuthController::AUTH0_DOMAIN);
-    $this->client_id = $this->config->get(AuthController::AUTH0_CLIENT_ID);
-    $this->client_secret = $this->config->get(AuthController::AUTH0_CLIENT_SECRET);
-    $this->redirect_for_sso = $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
-    $this->auth0_jwt_signature_alg = $this->config->get(AuthController::AUTH0_JWT_SIGNING_ALGORITHM);
-    $this->secret_base64_encoded = FALSE || $this->config->get(AuthController::AUTH0_SECRET_ENCODED);
-    $this->offlineAccess = FALSE || $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
+  /**
+   * Logs messages and errors.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
+   */
+  protected $logger;
 
-    $this->auth0 = FALSE;
+  /**
+   * The auth0 instance.
+   *
+   * @var \Auth0\SDK\Auth0
+   */
+  protected $auth0 = FALSE;
+
+  /**
+   * The auth0 helper.
+   *
+   * @var \Drupal\Auth0\Auth0Helper
+   */
+  protected $helper;
+
+  /**
+   * The http client.
+   *
+   * @var \Drupal\auth0\Controller\ClientFactory
+   */
+  protected $httpClient;
+
+  /**
+   * If to redirect for SSO.
+   *
+   * @var bool
+   */
+  protected $redirectForSso;
+
+  /**
+   * Request a refresh token.
+   *
+   * @var bool
+   */
+  protected $offlineAccess;
+
+  /**
+   * AuthController constructor.
+   *
+   * @param \Drupal\Core\PageCache\ResponsePolicyInterface $page_kill_switch
+   *   Determine's if page should be stored in cache.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config
+   *   The config factory.
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger
+   *   The logger to log messages and errors.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   *   Dispatches events.
+   * @param \GuzzleHttp\Client $http_client
+   *   The http client to make external requests.
+   * @param \Drupal\Auth0\Auth0Helper $helper
+   *   The auth0 helper.
+   */
+  public function __construct(
+    ResponsePolicyInterface $page_kill_switch,
+    ConfigFactoryInterface $config,
+    LoggerChannelFactoryInterface $logger,
+    EventDispatcherInterface $event_dispatcher,
+    Client $http_client,
+    Auth0Helper $helper
+  ) {
+    // Ensure the pages this controller servers never gets cached.
+    $page_kill_switch->trigger();
+
+    $this->eventDispatcher = $event_dispatcher;
+
+    $this->logger = $logger->get('auth0');
+    $this->config = $config->get('auth0.settings');
+    $this->httpClient = $http_client;
+    $this->helper = $helper;
+    $this->redirectForSso = (bool) $this->config->get('auth0_redirect_for_sso');
+    $this->offlineAccess = FALSE || $this->config->get(Auth0Helper::AUTH0_OFFLINE_ACCESS);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container) {
     return new static(
-        $container->get('user.private_tempstore'),
-        $container->get('session_manager')
+      $container->get('page_cache_kill_switch'),
+      $container->get('config.factory'),
+      $container->get('logger.factory'),
+      $container->get('event_dispatcher'),
+      $container->get('http_client'),
+      $container->get('auth0.helper')
     );
   }
 
   /**
-   * Handles the login page override.
+   * @return array|TrustedRedirectResponse
+   *
+   * @throws \Drupal\user\TempStoreException
    */
-  public function login(Request $request) {
+  public function login() {
     global $base_root;
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-
-    $lockExtraSettings = $config->get('auth0_lock_extra_settings');
-
-    if (trim($lockExtraSettings) == "") {
-      $lockExtraSettings = "{}";
+    // If supporting SSO, redirect to the hosted login page for authorization.
+    if ($this->redirectForSso) {
+      return new TrustedRedirectResponse($this->buildAuthorizeUrl('none'));
     }
 
-    $returnTo = null;
-    if ($request->request->has('returnTo')) {
-      $returnTo = $request->request->get('returnTo');
-    } elseif($request->query->has('returnTo')) {
-      $returnTo = $request->query->get('returnTo');
+    $lockExtraSettings = $this->config->get('auth0_lock_extra_settings');
+    $lockExtraSettings = empty($lockExtraSettings) ? NULL : $lockExtraSettings;
+
+    $scope = Auth0Helper::DEFAULT_SCOPE;
+    if ( $this->offlineAccess ) {
+      $scope .= ' offline_access';
     }
 
-    /** 
-     * If supporting SSO, redirect to the hosted login page for authorization 
-     */
-    if ($this->redirect_for_sso == TRUE) {
-      $prompt = 'none';
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl($prompt, $returnTo));
-    }
-
-    /* Not doing SSO, so show login page */
-    return array(
+    return [
       '#theme' => 'auth0_login',
-      '#domain' => $config->get('auth0_domain'),
-      '#clientID' => $config->get('auth0_client_id'),
-      '#state' => $this->getNonce( $returnTo ),
-      '#showSignup' => $config->get('auth0_allow_signup'),
-      '#offlineAccess' => $this->offlineAccess,
-      '#widgetCdn' => $config->get('auth0_widget_cdn'),
-      '#loginCSS' => $config->get('auth0_login_css'),
-      '#lockExtraSettings' => $lockExtraSettings,
-      '#callbackURL' => "$base_root/auth0/callback",
-      '#scopes' => AUTH0_DEFAULT_SCOPES,
-    );
+      '#loginCSS' => $this->config->get('auth0_login_css'),
+      '#attached' => [
+        'library' => [
+          'auth0/auth0.lock',
+        ],
+        'drupalSettings' => [
+          'auth0' => [
+            'clientId' => $this->config->get(Auth0Helper::AUTH0_CLIENT_ID),
+            'domain' => $this->config->get(Auth0Helper::AUTH0_DOMAIN),
+            'lockOptions' => $lockExtraSettings,
+            'showSignup' => $this->config->get('auth0_allow_signup'),
+            'callbackURL' => "$base_root/auth0/callback",
+            'state' => $this->helper->getNonce(),
+            'scope' => $scope,
+          ],
+        ],
+      ],
+    ];
   }
 
   /**
-   * Handles the login page override.
+   * Log out of Drupal and, if SSO, Auth0 as well
+   *
+   * @return TrustedRedirectResponse
    */
   public function logout() {
     global $base_root;
 
-    $auth0Api = new Authentication($this->domain, $this->client_id);
+    $auth0Api = new Authentication(
+      $this->config->get(Auth0Helper::AUTH0_DOMAIN),
+      $this->config->get(Auth0Helper::AUTH0_CLIENT_ID)
+    );
 
     user_logout();
-    
-    // if we are using SSO, we need to logout completely from Auth0, otherwise they will just logout of their client
-    return new TrustedRedirectResponse($auth0Api->get_logout_link($base_root, $this->redirect_for_sso ? null : $this->client_id));
+
+    // If we are using SSO, we need to logout completely from Auth0, otherwise
+    // they will just logout of their client.
+    $link = $auth0Api->get_logout_link(
+      $base_root,
+      $this->redirectForSso ? NULL : $this->config->get(Auth0Helper::AUTH0_CLIENT_ID)
+    );
+
+    return new TrustedRedirectResponse($link);
   }
 
-  /**
-   * Create a new nonce in session and return it
-   */
-  protected function getNonce($returnTo) {
-    // Have to start the session after putting something into the session, or we don't actually start it!
-    if (!$this->sessionManager->isStarted() && !isset($_SESSION['auth0_is_session_started'])) {
-      $_SESSION['auth0_is_session_started'] = 'yes';
-      $this->sessionManager->start();
-    }
-
-    $sessionStateHandler = new SessionStateHandler( new SessionStore() );
-    $states = $this->tempStore->get(AuthController::STATE);
-    if ( ! is_array( $states ) ) {
-      $states = array();
-    }
-    $nonce = $sessionStateHandler->issue();
-    $states[$nonce] = $returnTo === null ? '' : $returnTo;
-    $this->tempStore->set(AuthController::STATE, $states);
-    
-    return $nonce;
-  }
 
   /**
    * Build the Authorize url
-   * @param $prompt none|login if prompt=none should be passed, false if not
-   * @param $returnTo local path|null if null, use default of /user
-   * @return string the URL to redirect to for authorization
+   *
+   * @param string|bool $prompt - if prompt=none should be passed, false if not
+   *
+   * @return string
+   *
+   * @throws \Drupal\user\TempStoreException
    */
-  protected function buildAuthorizeUrl($prompt, $returnTo=null) {
+  protected function buildAuthorizeUrl($prompt) {
     global $base_root;
 
-    $auth0Api = new Authentication($this->domain, $this->client_id);
+    $auth0Api = new Authentication(
+      $this->config->get(Auth0Helper::AUTH0_DOMAIN),
+      $this->config->get(Auth0Helper::AUTH0_CLIENT_ID)
+    );
 
     $response_type = 'code';
     $redirect_uri = "$base_root/auth0/callback";
     $connection = null;
-    $state = $this->getNonce($returnTo);
+    $state = $this->helper->getNonce();
+
     $additional_params = [];
-    $additional_params['scope'] = AUTH0_DEFAULT_SCOPES;
-    if ($this->offlineAccess) $additional_params['scope'] .= ' offline_access';
-    if ($prompt) $additional_params['prompt'] = $prompt;
+    $additional_params['scope'] = Auth0Helper::DEFAULT_SCOPE;
+    if ($this->offlineAccess) {
+      $additional_params['scope'] .= ' offline_access';
+    }
+    if ($prompt) {
+      $additional_params['prompt'] = $prompt;
+    }
 
     return $auth0Api->get_authorize_link($response_type, $redirect_uri, $connection, $state, $additional_params);
   }

@@ -10,7 +10,7 @@
  */
 function auth0_schema() {
   $schema['auth0_user'] = [
-    'description' => 'Joins auth0 users with drupal users.',
+    'description' => 'Joins Auth0 users with Drupal users.',
     'fields' => [
       'auth0_id' => [
         'description' => 'The user id on auth0',
