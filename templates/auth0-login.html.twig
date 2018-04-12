@@ -1,31 +1,4 @@
 <div id="auth0-login-form" style=" min-height: 440px;"></div>
-
-<script id="auth0" src="{{ widgetCdn }}"></script>
-<script type="text/javascript">
-
-    var lock_options = {{ lockExtraSettings|raw }};
-    lock_options.container = lock_options.container || 'auth0-login-form';
-    lock_options.allowSignUp = lock_options.allowSignUp || {{showSignup ? "true" : "false"}};
-    lock_options.auth = lock_options.auth || {};
-    lock_options.auth.container = lock_options.auth.container || 'auth0-login-form';
-    lock_options.auth.redirectUrl = lock_options.auth.redirectUrl || '{{callbackURL}}';
-    lock_options.auth.responseType = lock_options.auth.responseType || 'code';
-    lock_options.auth.params = lock_options.auth.params || {};
-    lock_options.auth.params.scope = lock_options.auth.params.scope || '{{scopes}}';
-    lock_options.auth.params.state = '{{state}}';
-
-    if ('{{ offlineAccess }}' === 'TRUE') {
-        if (lock_options.auth.params.scope.indexOf('offline_access') < 0) {
-            lock_options.auth.params.scope += ' offline_access';
-        }
-    }
-
-    var lock = new Auth0Lock('{{clientID}}','{{domain}}', lock_options);
-
-    lock.show();
-
-</script>
-
 <style type="text/css">
 {{ loginCSS|raw }}
 </style>
