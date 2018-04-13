@@ -1,43 +1,40 @@
 <?php
+
+use Drupal\auth0\Util\AuthHelper;
+
 /**
  * @file
- * Module definition
+ * Auth0 module.
  */
 
-define( 'AUTH0_DEFAULT_SCOPES', 'openid email profile' );
 define( 'AUTH0_DEFAULT_SIGNING_ALGORITHM', 'RS256' );
 define( 'AUTH0_DEFAULT_USERNAME_CLAIM', 'nickname' );
 
 /**
  * Replace a form with the lock widget.
  */
-function auth0_theme() {  
-  return array(
-    'auth0_login' => array(
+function auth0_theme() {
+  return [
+    'auth0_login' => [
       'template' => 'auth0-login',
-      'variables' => array(
-        'domain' => NULL,
-        'clientID' => NULL,
-        'state' => NULL,
-        'showSignup' => NULL,
-        'offlineAccess' => FALSE,
-        'widgetCdn' => NULL,
-        'loginCSS' => NULL,
-        'callbackURL' => NULL,
-        'lockExtraSettings' => '{}',
-        'scopes' => AUTH0_DEFAULT_SCOPES,
-      ),
-    ),
-  );
+    ],
+  ];
 }
 
 /**
- * Handle users deletion, it should delete the Auth0 profile.
+ * Implements hook_library_info_build().
  */
-function auth0_user_delete($account) {
-  db_delete('auth0_user')
-    ->condition('drupal_id', $account->uid->value)
-    ->execute();
+function auth0_library_info_build() {
+  $config = \Drupal::service('config.factory')->get('auth0.settings');
+  return [
+    'auth0.widget' => [
+      'js' => [
+        $config->get('auth0_widget_cdn') => [
+          'type' => 'external',
+        ],
+      ],
+    ],
+  ];
 }
 
 /**

@@ -9,31 +9,31 @@
  * Implements hook_schema().
  */
 function auth0_schema() {
-  $schema['auth0_user'] = array(
-    'description' => 'Joins auth0 users with drupal users.',
-    'fields' => array(
-      'auth0_id' => array(
+  $schema['auth0_user'] = [
+    'description' => 'Joins Auth0 users with Drupal users.',
+    'fields' => [
+      'auth0_id' => [
         'description' => 'The user id on auth0',
         'type' => 'varchar',
         'length' => 100,
         'not null' => TRUE,
-      ),
-      'drupal_id' => array(
+      ],
+      'drupal_id' => [
         'description' => 'The user id on drupal',
         'type' => 'int',
         'not null' => TRUE,
-      ),
-      'auth0_object' => array(
+      ],
+      'auth0_object' => [
         'description' => 'A serialized version of the auth0 user',
         'type' => 'text',
         'not null' => TRUE,
-      ),
-    ),
-    'indexes' => array(
-      'drupal_id' => array('drupal_id'),
-    ),
-    'primary key' => array('auth0_id'),
-  );
+      ],
+    ],
+    'indexes' => [
+      'drupal_id' => ['drupal_id'],
+    ],
+    'primary key' => ['auth0_id'],
+  ];
 
   return $schema;
 }
@@ -55,21 +55,22 @@ function auth0_install() {
 }";
 
   $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
-  $config->set('auth0_form_title', 'Sign In')
-          ->set('auth0_allow_signup', TRUE)
-          ->set('auth0_allow_offline_access', FALSE)
-          ->set('auth0_redirect_for_sso', FALSE)
-          ->set('auth0_widget_cdn', '//cdn.auth0.com/js/lock/11.0/lock.min.js')
-          ->set('auth0_requires_verified_email', TRUE)
-          ->set('auth0_join_user_by_mail_enabled', FALSE)
-          ->set('auth0_username_claim', 'nickname')
-          ->set('auth0_login_css', $css)
-          ->set('auth0_auto_register', FALSE)
-          ->set('auth0_lock_extra_settings', '')
-          ->set('auth0_claim_mapping', '')
-          ->set('auth0_claim_to_use_for_role', '')
-          ->set('auth0_role_mapping', '')
-          ->save();
+  $config
+    ->set('auth0_login_css', $css)
+    ->set('auth0_widget_cdn', '//cdn.auth0.com/js/lock/11.3/lock.min.js')
+    ->set('auth0_form_title', t('Sign In'))
+    ->set('auth0_requires_verified_email', TRUE)
+    ->set('auth0_allow_signup', TRUE)
+    ->set('auth0_redirect_for_sso', FALSE)
+    ->set('auth0_lock_extra_settings', '')
+    ->set('auth0_allow_offline_access', FALSE)
+    ->set('auth0_join_user_by_mail_enabled', FALSE)
+    ->set('auth0_username_claim', 'nickname')
+    ->set('auth0_auto_register', FALSE)
+    ->set('auth0_claim_mapping', '')
+    ->set('auth0_claim_to_use_for_role', '')
+    ->set('auth0_role_mapping', '')
+    ->save();
 }
 
 /**

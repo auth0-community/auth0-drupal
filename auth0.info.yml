@@ -1,4 +1,4 @@
 name: Auth0
-description: "Provides single sign on for drupal pages"
+description: "Provides single sign on for Drupal sites"
 core: "8.x"
 type: module
