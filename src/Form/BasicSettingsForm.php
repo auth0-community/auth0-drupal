@@ -1,5 +1,7 @@
 <?php
+
 namespace Drupal\auth0\Form;
+
 /**
  * @file
  * Contains \Drupal\auth0\Form\BasicSettingsForm.
@@ -28,53 +30,58 @@ class BasicSettingsForm extends FormBase {
 
     $config = \Drupal::service('config.factory')->get('auth0.settings');
 
-    $form['auth0_client_id'] = array(
+    $form['auth0_client_id'] = [
       '#type' => 'textfield',
-      '#title' => t('Client id'),
-      '#default_value' => $config->get('auth0_client_id', ''),
-      '#description' => t('Application id, copy from the auth0 dashboard.'),
+      '#title' => $this->t('Client ID'),
+      '#default_value' => $config->get('auth0_client_id'),
+      '#description' => $this->t('Client ID from the Application settings page in your Auth0 dashboard.'),
       '#required' => TRUE,
-    );
-    $form['auth0_client_secret'] = array(
+    ];
+
+    $form['auth0_client_secret'] = [
       '#type' => 'textfield',
-      '#title' => t('Client secret'),
-      '#default_value' => $config->get('auth0_client_secret', ''),
-      '#description' => t('Application secret, copy from the auth0 dashboard.'),
+      '#title' => $this->t('Client Secret'),
+      '#default_value' => $config->get('auth0_client_secret'),
+      '#description' => $this->t('Client Secret from the Application settings page in your Auth0 dashboard.'),
       '#required' => TRUE,
-    );
-    $form['auth0_secret_base64_encoded'] = array(
+    ];
+
+    $form['auth0_secret_base64_encoded'] = [
       '#type' => 'checkbox',
-      '#title' => t('Client Secret is Base64 Encoded'),
+      '#title' => $this->t('Client Secret is base64 Encoded'),
       '#default_value' => $config->get('auth0_secret_base64_encoded'),
-      '#description' => t('This is stated below the client secret in your Auth0 Dashboard for the client.  If your client was created after September 2016, this should be false.')
-    );
-    $form['auth0_domain'] = array(
+      '#description' => $this->t('This is stated below the Client Secret field on the Application settings page in your Auth0 dashboard.'),
+    ];
+
+    $form['auth0_domain'] = [
       '#type' => 'textfield',
-      '#title' => t('Domain'),
-      '#default_value' => $config->get('auth0_domain', ''),
-      '#description' => t('Your Auth0 domain, you can see it in the auth0 dashboard.'),
+      '#title' => $this->t('Domain'),
+      '#default_value' => $config->get('auth0_domain'),
+      '#description' => $this->t('The Auth0 Domain for this Application, found in the Auth0 Dashboard.'),
       '#required' => TRUE,
-    );
-    $form[ AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM ] = array(
+    ];
+
+    $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = [
       '#type' => 'select',
-      '#title' => t('JWT Signature Algorithm'),
+      '#title' => $this->t('JsonWebToken Signature Algorithm'),
       '#options' => [
         'HS256' => $this->t('HS256'),
         'RS256' => $this->t('RS256'),
       ],
-      '#default_value' => $config->get( AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM )
-        ? $config->get( AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM )
-        : AUTH0_DEFAULT_SIGNING_ALGORITHM,
-      '#description' => t('Your JWT Signing Algorithm for the ID token. RS256 is recommended and must be set in the advanced settings for this client under the OAuth tab.'),
+      '#default_value' => $config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM)
+      ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
+      '#description' => $this->t('Your JWT Signing Algorithm for the ID token. RS256 is recommended and must be set in the advanced settings for this client under the OAuth tab.'),
       '#required' => TRUE,
-    );
+    ];
 
     $form['actions']['#type'] = 'actions';
-    $form['actions']['submit'] = array(
+
+    $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Save'),
       '#button_type' => 'primary',
-    );
+    ];
+
     return $form;
 
   }
@@ -107,11 +114,11 @@ class BasicSettingsForm extends FormBase {
 
     $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
     $config->set('auth0_client_id', $form_state->getValue('auth0_client_id'))
-            ->set('auth0_client_secret', $form_state->getValue('auth0_client_secret'))
-            ->set('auth0_domain', $form_state->getValue('auth0_domain'))
-            ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
-            ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
-            ->save();
+      ->set('auth0_client_secret', $form_state->getValue('auth0_client_secret'))
+      ->set('auth0_domain', $form_state->getValue('auth0_domain'))
+      ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
+      ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
+      ->save();
   }
 
 }
