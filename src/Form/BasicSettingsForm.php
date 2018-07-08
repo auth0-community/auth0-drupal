@@ -33,7 +33,7 @@ class BasicSettingsForm extends FormBase {
     $form['auth0_client_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Client ID'),
-      '#default_value' => $config->get('auth0_client_id'),
+      '#default_value' => $config->get('auth0_client_id') ?: '',
       '#description' => $this->t('Client ID from the Application settings page in your Auth0 dashboard.'),
       '#required' => TRUE,
     ];
@@ -41,7 +41,7 @@ class BasicSettingsForm extends FormBase {
     $form['auth0_client_secret'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Client Secret'),
-      '#default_value' => $config->get('auth0_client_secret'),
+      '#default_value' => $config->get('auth0_client_secret') ?: '',
       '#description' => $this->t('Client Secret from the Application settings page in your Auth0 dashboard.'),
       '#required' => TRUE,
     ];
@@ -49,14 +49,14 @@ class BasicSettingsForm extends FormBase {
     $form['auth0_secret_base64_encoded'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Client Secret is base64 Encoded'),
-      '#default_value' => $config->get('auth0_secret_base64_encoded'),
+      '#default_value' => $config->get('auth0_secret_base64_encoded') ?: FALSE,
       '#description' => $this->t('This is stated below the Client Secret field on the Application settings page in your Auth0 dashboard.'),
     ];
 
     $form['auth0_domain'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Domain'),
-      '#default_value' => $config->get('auth0_domain'),
+      '#default_value' => $config->get('auth0_domain') ?: '',
       '#description' => $this->t('The Auth0 Domain for this Application, found in the Auth0 Dashboard.'),
       '#required' => TRUE,
     ];
