@@ -21,6 +21,8 @@ use Drupal\user\Entity\User;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\SessionManagerInterface;
 use Drupal\Core\Routing\TrustedRedirectResponse;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -44,6 +46,9 @@ use Auth0\SDK\Store\SessionStore;
  * Controller routines for auth0 authentication.
  */
 class AuthController extends ControllerBase {
+
+  use StringTranslationTrait;
+
   const SESSION = 'auth0';
   const STATE = 'state';
   const AUTH0_LOGGER = 'auth0_controller';
@@ -74,9 +79,16 @@ class AuthController extends ControllerBase {
    * Initialize the controller.
    *
    * @param \Drupal\user\PrivateTempStoreFactory $tempStoreFactory
+   *   The temp store factory.
    * @param \Drupal\Core\Session\SessionManagerInterface $sessionManager
+   *   The current session.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
    */
-  public function __construct(PrivateTempStoreFactory $tempStoreFactory, SessionManagerInterface $sessionManager) {
+  public function __construct(
+    PrivateTempStoreFactory $tempStoreFactory,
+    SessionManagerInterface $sessionManager,
+    ConfigFactoryInterface $configFactory
+  ) {
     // Ensure the pages this controller servers never gets cached.
     \Drupal::service('page_cache_kill_switch')->trigger();
 
@@ -86,7 +98,7 @@ class AuthController extends ControllerBase {
     $this->tempStore = $tempStoreFactory->get(AuthController::SESSION);
     $this->sessionManager = $sessionManager;
     $this->logger = \Drupal::logger(AuthController::AUTH0_LOGGER);
-    $this->config = \Drupal::service('config.factory')->get('auth0.settings');
+    $this->config = $configFactory->get('auth0.settings');
     $this->domain = $this->config->get(AuthController::AUTH0_DOMAIN);
     $this->clientId = $this->config->get(AuthController::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthController::AUTH0_CLIENT_SECRET);
@@ -104,19 +116,24 @@ class AuthController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
         $container->get('user.private_tempstore'),
-        $container->get('session_manager')
+        $container->get('session_manager'),
+        $container->get('config.factory')
     );
   }
 
   /**
    * Handles the login page override.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The current request.
+   *
+   * @return array|\Drupal\Core\Routing\TrustedRedirectResponse
+   *   The redirect or a renderable array.
    */
   public function login(Request $request) {
     global $base_root;
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-
-    $lockExtraSettings = $config->get('auth0_lock_extra_settings');
+    $lockExtraSettings = $this->config->get('auth0_lock_extra_settings');
 
     if (trim($lockExtraSettings) == "") {
       $lockExtraSettings = "{}";
@@ -139,13 +156,13 @@ class AuthController extends ControllerBase {
     /* Not doing SSO, so show login page */
     return [
       '#theme' => 'auth0_login',
-      '#domain' => $config->get('auth0_domain'),
-      '#clientID' => $config->get('auth0_client_id'),
+      '#domain' => $this->config->get('auth0_domain'),
+      '#clientID' => $this->config->get('auth0_client_id'),
       '#state' => $this->getNonce($returnTo),
-      '#showSignup' => $config->get('auth0_allow_signup'),
+      '#showSignup' => $this->config->get('auth0_allow_signup'),
       '#offlineAccess' => $this->offlineAccess,
-      '#widgetCdn' => $config->get('auth0_widget_cdn'),
-      '#loginCSS' => $config->get('auth0_login_css'),
+      '#widgetCdn' => $this->config->get('auth0_widget_cdn'),
+      '#loginCSS' => $this->config->get('auth0_login_css'),
       '#lockExtraSettings' => $lockExtraSettings,
       '#callbackURL' => "$base_root/auth0/callback",
       '#scopes' => AUTH0_DEFAULT_SCOPES,
@@ -154,6 +171,9 @@ class AuthController extends ControllerBase {
 
   /**
    * Handles the login page override.
+   *
+   * @return \Drupal\Core\Routing\TrustedRedirectResponse
+   *   The response after logout.
    */
   public function logout() {
     global $base_root;
@@ -173,9 +193,11 @@ class AuthController extends ControllerBase {
   /**
    * Create a new nonce in session and return it.
    *
-   * @param $returnTo
+   * @param string $returnTo
+   *   The return url.
    *
    * @return string
+   *   The nonce string.
    */
   protected function getNonce($returnTo) {
     // Have to start the session after putting something into the session,
@@ -200,9 +222,13 @@ class AuthController extends ControllerBase {
   /**
    * Build the Authorize url.
    *
-   * @param $prompt none|login if prompt=none should be passed, false if not
-   * @param $returnTo local path|null if null, use default of /user
-   * @return string the URL to redirect to for authorization
+   * @param null|string $prompt
+   *   If prompt=none should be passed, false if not.
+   * @param string $returnTo
+   *   Local path|null if null, use default of /user.
+   *
+   * @return string
+   *   The URL to redirect to for authorization.
    */
   protected function buildAuthorizeUrl($prompt, $returnTo = NULL) {
     global $base_root;
@@ -228,11 +254,15 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   *
+   * Check for errors.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
-   * @param $returnTo
+   *   The current request.
+   * @param string $returnTo
+   *   The return url.
+   *
    * @return \Drupal\Core\Routing\TrustedRedirectResponse|null
+   *   The redirect response.
    */
   private function checkForError(Request $request, $returnTo) {
     // Check for errors.
@@ -252,14 +282,17 @@ class AuthController extends ControllerBase {
    * Handles the callback for the oauth transaction.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The current request.
    *
    * @return \Drupal\Core\Routing\TrustedRedirectResponse|null|\Symfony\Component\HttpFoundation\RedirectResponse
+   *   The redirect response.
    *
    * @throws \Auth0\SDK\Exception\CoreException
+   *   The Auth0 exception.
    */
   public function callback(Request $request) {
     global $base_root;
-    $problem_logging_in_msg = t('There was a problem logging you in, sorry for the inconvenience.');
+    $problem_logging_in_msg = $this->t('There was a problem logging you in, sorry for the inconvenience.');
 
     $returnTo = NULL;
     $response = $this->checkForError($request, $returnTo);
@@ -268,12 +301,13 @@ class AuthController extends ControllerBase {
       return $response;
     }
 
+    // Set store to null so that the store is set to SessionStore.
     $this->auth0 = new Auth0([
       'domain'        => $this->domain,
       'client_id'     => $this->clientId,
       'client_secret' => $this->clientSecret,
       'redirect_uri'  => "$base_root/auth0/callback",
-      'store' => NULL, // Set to null so that the store is set to SessionStore.
+      'store' => NULL,
       'persist_id_token' => FALSE,
       'persist_user' => FALSE,
       'persist_access_token' => FALSE,
@@ -291,7 +325,7 @@ class AuthController extends ControllerBase {
     catch (\Exception $e) {
       return $this->failLogin(
         $problem_logging_in_msg,
-        t('Failed to exchange code for tokens: @exception', ['@exception' => $e->getMessage()])
+        $this->t('Failed to exchange code for tokens: @exception', ['@exception' => $e->getMessage()])
       );
     }
 
@@ -301,7 +335,7 @@ class AuthController extends ControllerBase {
       }
       catch (\Exception $e) {
         // Do NOT fail here, just log the error.
-        \Drupal::logger('auth0')->warning(t('Failed getting refresh token: ', ['@exception' => $e->getMessage()]));
+        \Drupal::logger('auth0')->warning($this->t('Failed getting refresh token: @exception', ['@exception' => $e->getMessage()]));
       }
     }
 
@@ -309,7 +343,7 @@ class AuthController extends ControllerBase {
       $user = $this->helper->validateIdToken($idToken);
     }
     catch (\Exception $e) {
-      return $this->failLogin($problem_logging_in_msg, t('Failed to validate JWT: @exception', ['@exception' => $e->getMessage()]));
+      return $this->failLogin($problem_logging_in_msg, $this->t('Failed to validate JWT: @exception', ['@exception' => $e->getMessage()]));
     }
 
     if ($userInfo) {
@@ -321,7 +355,7 @@ class AuthController extends ControllerBase {
       }
 
       if ($userInfo['sub'] != $user->sub) {
-        return $this->failLogin($problem_logging_in_msg, t('Failed to verify JWT sub'));
+        return $this->failLogin($problem_logging_in_msg, $this->t('Failed to verify JWT sub'));
       }
 
       \Drupal::logger('auth0')->notice('Good Login');
@@ -336,13 +370,16 @@ class AuthController extends ControllerBase {
   /**
    * Checks if the email is valid.
    *
-   * @param $userInfo
+   * @param array $userInfo
+   *   The user information.
+   *
    * @throws \Drupal\auth0\Exception\EmailNotSetException
+   *   When an email hasn't been set.
    * @throws \Drupal\auth0\Exception\EmailNotVerifiedException
+   *   When an email hasn't been verified.
    */
-  protected function validateUserEmail($userInfo) {
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-    $requires_email = $config->get('auth0_requires_verified_email');
+  protected function validateUserEmail(array $userInfo) {
+    $requires_email = $this->config->get('auth0_requires_verified_email');
 
     if ($requires_email) {
       if (!isset($userInfo['email']) || empty($userInfo['email'])) {
@@ -355,16 +392,26 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   * Process the Auth0 user profile and sign in or sign the user up
+   * Process the Auth0 user profile and sign in or sign the user up.
    *
-   * @param Request $request
-   * @param array $userInfo - array of user data from an ID token or /userinfo endpoint
-   * @param string $idToken - ID token received during code exchange
-   * @param string $refreshToken - refresh token
-   * @param int $expiresAt - token expiration
-   * @param string $returnTo - return URL
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The current request.
+   * @param array $userInfo
+   *   The user data info.
+   * @param string $idToken
+   *   ID token received during code exchange.
+   * @param string $refreshToken
+   *   The refresh token.
+   * @param int $expiresAt
+   *   When the token expires.
+   * @param string $returnTo
+   *   The return url.
    *
-   * @return RedirectResponse
+   * @return \Symfony\Component\HttpFoundation\RedirectResponse
+   *   The redirect url.
+   *
+   * @throws \Exception
+   *   An exception.
    */
   protected function processUserLogin(Request $request, array $userInfo, $idToken, $refreshToken, $expiresAt, $returnTo) {
     \Drupal::logger('auth0')->notice('process user login');
@@ -391,7 +438,7 @@ class AuthController extends ControllerBase {
       $this->updateAuth0User($userInfo);
 
       // Update field and role mappings.
-      $this->auth0_update_fields_and_roles($userInfo, $user);
+      $this->auth0UpdateFieldsAndRoles($userInfo, $user);
 
       $event = new Auth0UserSigninEvent($user, $userInfo, $refreshToken, $expiresAt);
       $this->eventDispatcher->dispatch(Auth0UserSigninEvent::NAME, $event);
@@ -425,11 +472,15 @@ class AuthController extends ControllerBase {
   }
 
   /**
+   * Fails user login.
    *
+   * @param string $message
+   *   The message to display.
+   * @param string $logMessage
+   *   The message to log.
    *
-   * @param $message
-   * @param $logMessage
    * @return \Symfony\Component\HttpFoundation\RedirectResponse
+   *   The redirect response after fail.
    */
   protected function failLogin($message, $logMessage) {
     $this->logger->error($logMessage);
@@ -443,12 +494,17 @@ class AuthController extends ControllerBase {
   /**
    * Create or link a new user based on the auth0 profile.
    *
-   * @param array $userInfo - userinfo from an ID token or the /userinfo endpoint
-   * @param string $idToken - ID token returned during login
+   * @param array $userInfo
+   *   The user info data array.
+   * @param string $idToken
+   *   ID token returned during login.
    *
-   * @return mixed
+   * @return bool|mixed
+   *   The user object.
    *
-   * @throws EmailNotVerifiedException
+   * @throws \Drupal\auth0\Exception\EmailNotVerifiedException
+   *   The email not verified exception.
+   * @throws \Exception
    */
   protected function signupUser(array $userInfo, $idToken = '') {
     // If the user doesn't exist we need to either create a new one,
@@ -464,8 +520,7 @@ class AuthController extends ControllerBase {
 
     $joinUser = FALSE;
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-    $user_name_claim = $config->get('auth0_username_claim');
+    $user_name_claim = $this->config->get('auth0_username_claim');
     if ($user_name_claim == '') {
       $user_name_claim = 'nickname';
     }
@@ -475,7 +530,7 @@ class AuthController extends ControllerBase {
       ? $userInfo[$user_name_claim]
       : str_replace('|', '_', $userInfo['user_id']);
 
-    if ($config->get('auth0_join_user_by_mail_enabled') && !empty($userInfo['email'])) {
+    if ($this->config->get('auth0_join_user_by_mail_enabled') && !empty($userInfo['email'])) {
       \Drupal::logger('auth0')->notice($userInfo['email'] . 'join user by mail is enabled, looking up user by email');
       // If the user has a verified email or is a database user try to see if
       // there is a user to join with. The isDatabase is because we don't want
@@ -484,11 +539,12 @@ class AuthController extends ControllerBase {
       if ($userInfo['email_verified'] || $isDatabaseUser) {
         $joinUser = user_load_by_mail($userInfo['email']);
       }
-    } else {
+    }
+    else {
       \Drupal::logger('auth0')->notice($user_name_used . ' join user by username');
 
-   	  if (!empty($userInfo['email_verified']) || $isDatabaseUser) {
-   	    $joinUser = user_load_by_name($user_name_used);
+      if (!empty($userInfo['email_verified']) || $isDatabaseUser) {
+        $joinUser = user_load_by_name($user_name_used);
       }
     }
 
@@ -496,8 +552,8 @@ class AuthController extends ControllerBase {
       \Drupal::logger('auth0')->notice($joinUser->id() . ' drupal user found by email with uid');
 
       // If we are here, we have a potential join user.
-      // Don't allow creation or assignation of user if the email is not verified,
-      // that would be hijacking.
+      // Don't allow creation or assignation of user if the email is not
+      // verified, that would be hijacking.
       if (!$userInfo['email_verified']) {
         throw new EmailNotVerifiedException();
       }
@@ -509,8 +565,8 @@ class AuthController extends ControllerBase {
       // If we are here, we need to create the user.
       $user = $this->createDrupalUser($userInfo);
 
-      // Update field and role mappings
-      $this->auth0_update_fields_and_roles($userInfo, $user);
+      // Update field and role mappings.
+      $this->auth0UpdateFieldsAndRoles($userInfo, $user);
     }
 
     return $user;
@@ -518,6 +574,12 @@ class AuthController extends ControllerBase {
 
   /**
    * Email not verified error message.
+   *
+   * @param string $idToken
+   *   The id token.
+   *
+   * @return \Symfony\Component\HttpFoundation\RedirectResponse
+   *   The redirect response.
    */
   protected function auth0FailWithVerifyEmail($idToken) {
 
@@ -526,10 +588,10 @@ class AuthController extends ControllerBase {
     $linkText = "<a href='javascript:null' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
 
     return $this->failLogin(
-      t($formText."Please verify your email and log in again. Click $linkText to Resend verification email.",
+      $this->t($formText . "Please verify your email and log in again. Click $linkText to Resend verification email.",
         [
           '@url' => $url->toString(),
-          '@token' => $idToken
+          '@token' => $idToken,
         ]
     ), 'Email not verified');
   }
@@ -549,8 +611,11 @@ class AuthController extends ControllerBase {
 
   /**
    * Update the auth0 user profile.
+   *
+   * @param array $userInfo
+   *   The user info array.
    */
-  protected function updateAuth0User($userInfo) {
+  protected function updateAuth0User(array $userInfo) {
     db_update('auth0_user')
       ->fields([
         'auth0_object' => serialize($userInfo),
@@ -560,34 +625,38 @@ class AuthController extends ControllerBase {
   }
 
   /**
+   * Update the Auth fields.
    *
-   *
-   * @param $userInfo
-   * @param $user
+   * @param array $userInfo
+   *   The user info array.
+   * @param \Drupal\user\Entity\User $user
+   *   The drupal user entity.
    */
-  protected function auth0_update_fields_and_roles($userInfo, $user) {
+  protected function auth0UpdateFieldsAndRoles(array $userInfo, User $user) {
 
     $edit = [];
-    $this->auth0_update_fields($userInfo, $user, $edit);
-    $this->auth0_update_roles($userInfo, $user, $edit);
+    $this->auth0UpdateFields($userInfo, $user, $edit);
+    $this->auth0UpdateRoles($userInfo, $user, $edit);
 
     $user->save();
   }
 
   /**
-   * Update the $user profile attributes of a user based on the auth0 field mappings
+   * Update the $user profile attributes based on the auth0 field mappings.
    *
-   * @param $user_info
-   * @param $user
-   * @param $edit
+   * @param array $userInfo
+   *   The user info array.
+   * @param \Drupal\user\Entity\User $user
+   *   The drupal user entity.
+   * @param array $edit
+   *   The edit array.
    */
-  protected function auth0_update_fields($user_info, $user, &$edit) {
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-    $auth0_claim_mapping = $config->get('auth0_claim_mapping');
+  protected function auth0UpdateFields(array $userInfo, User $user, array &$edit) {
+    $auth0_claim_mapping = $this->config->get('auth0_claim_mapping');
 
     if (isset($auth0_claim_mapping) && !empty($auth0_claim_mapping)) {
-      // For each claim mapping, lookup the value, otherwise set to blank
-      $mappings = $this->auth0_pipeListToArray($auth0_claim_mapping);
+      // For each claim mapping, lookup the value, otherwise set to blank.
+      $mappings = $this->auth0PipeListToArray($auth0_claim_mapping);
 
       // Remove mappings handled automatically by the module.
       $skip_mappings = [
@@ -606,12 +675,14 @@ class AuthController extends ControllerBase {
         $key = $mapping[1];
         if (in_array($key, $skip_mappings)) {
           \Drupal::logger('auth0')->notice('skipping mapping handled already by auth0 module ' . $mapping);
-        } else {
-          $value = isset($user_info[$mapping[0]]) ? $user_info[$mapping[0]] : '';
+        }
+        else {
+          $value = isset($userInfo[$mapping[0]]) ? $userInfo[$mapping[0]] : '';
           $current_value = $user->get($key)->value;
           if ($current_value === $value) {
             \Drupal::logger('auth0')->notice('value is unchanged ' . $key);
-          } else {
+          }
+          else {
             \Drupal::logger('auth0')->notice('value changed ' . $key . ' from [' . $current_value . '] to [' . $value . ']');
             $edit[$key] = $value;
             $user->set($key, $value);
@@ -624,28 +695,31 @@ class AuthController extends ControllerBase {
   /**
    * Updates the $user->roles of a user based on the auth0 role mappings.
    *
-   * @param $user_info
-   * @param $user
-   * @param $edit
+   * @param array $userInfo
+   *   The user info array.
+   * @param \Drupal\user\Entity\User $user
+   *   The drupal user entity.
+   * @param array $edit
+   *   The edit array.
    */
-  protected function auth0_update_roles($user_info, $user, &$edit) {
+  protected function auth0UpdateRoles(array $userInfo, User $user, array &$edit) {
     \Drupal::logger('auth0')->notice("Mapping Roles");
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-    $auth0_claim_to_use_for_role = $config->get('auth0_claim_to_use_for_role');
+    $auth0_claim_to_use_for_role = $this->config->get('auth0_claim_to_use_for_role');
 
     if (isset($auth0_claim_to_use_for_role) && !empty($auth0_claim_to_use_for_role)) {
-      $claim_value = isset($user_info[$auth0_claim_to_use_for_role]) ? $user_info[$auth0_claim_to_use_for_role] : '';
-      \Drupal::logger('auth0')->notice('claim_value '.$claim_value);
+      $claim_value = isset($userInfo[$auth0_claim_to_use_for_role]) ? $userInfo[$auth0_claim_to_use_for_role] : '';
+      \Drupal::logger('auth0')->notice('claim_value ' . $claim_value);
 
       $claim_values = [];
       if (is_array($claim_value)) {
         $claim_values = $claim_value;
-      } else {
+      }
+      else {
         $claim_values[] = $claim_value;
       }
 
-      $auth0_role_mapping = $config->get('auth0_role_mapping');
-      $mappings = $this->auth0_pipeListToArray($auth0_role_mapping);
+      $auth0_role_mapping = $this->config->get('auth0_role_mapping');
+      $mappings = $this->auth0PipeListToArray($auth0_role_mapping);
 
       $roles_granted = [];
       $roles_managed_by_mapping = [];
@@ -671,7 +745,8 @@ class AuthController extends ControllerBase {
       $tmp = array_diff($new_user_roles, $user_roles);
       if (empty($tmp)) {
         \Drupal::logger('auth0')->notice('no changes to roles detected');
-      } else {
+      }
+      else {
         \Drupal::logger('auth0')->notice('changes to roles detected');
         $edit['roles'] = $new_user_roles;
         foreach (array_diff($new_user_roles, $user_roles) as $new_role) {
@@ -685,12 +760,15 @@ class AuthController extends ControllerBase {
   }
 
   /**
+   * Convert mappings to a pipelist.
    *
+   * @param array $mappings
+   *   The mappings array.
    *
-   * @param $mappings
    * @return string
+   *   The result of the conversion.
    */
-  protected function auth0_mappingsToPipeList($mappings) {
+  protected function auth0MappingsToPipeList(array $mappings) {
     $result_text = "";
     foreach ($mappings as $map) {
       $result_text .= $map['from'] . '|' . $map['user_entered'] . "\n";
@@ -699,18 +777,22 @@ class AuthController extends ControllerBase {
   }
 
   /**
+   * Convert pipe list to array.
    *
+   * @param string $mappingListTxt
+   *   The pipe list string.
+   * @param bool $makeItem0Lowercase
+   *   If to make the list lowercase.
    *
-   * @param $mapping_list_txt
-   * @param bool $make_item0_lowercase
    * @return array
+   *   An array of items.
    */
-  protected function auth0_pipeListToArray($mapping_list_txt, $make_item0_lowercase = FALSE) {
+  protected function auth0PipeListToArray($mappingListTxt, $makeItem0Lowercase = FALSE) {
     $result_array = [];
-    $mappings = preg_split('/[\n\r]+/', $mapping_list_txt);
+    $mappings = preg_split('/[\n\r]+/', $mappingListTxt);
     foreach ($mappings as $line) {
       if (count($mapping = explode('|', trim($line))) == 2) {
-        $item_0 = ($make_item0_lowercase) ? drupal_strtolower(trim($mapping[0])) : trim($mapping[0]);
+        $item_0 = ($makeItem0Lowercase) ? drupal_strtolower(trim($mapping[0])) : trim($mapping[0]);
         $result_array[] = [$item_0, trim($mapping[1])];
       }
     }
@@ -720,10 +802,12 @@ class AuthController extends ControllerBase {
   /**
    * Insert the auth0 user.
    *
-   * @param $userInfo
-   * @param $uid
+   * @param array $userInfo
+   *   The user info array.
+   * @param int $uid
+   *   The drupal user id.
    */
-  protected function insertAuth0User($userInfo, $uid) {
+  protected function insertAuth0User(array $userInfo, $uid) {
 
     db_insert('auth0_user')->fields([
       'auth0_id' => $userInfo['user_id'],
@@ -734,10 +818,14 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   *
+   * Get random bytes string.
    *
    * @param int $nbBytes
+   *   The number of bytes to generate.
+   *
    * @return string
+   *   The generated string.
+   *
    * @throws \Exception
    */
   private function getRandomBytes($nbBytes = 32) {
@@ -751,10 +839,14 @@ class AuthController extends ControllerBase {
   }
 
   /**
+   * Generate a random password.
    *
+   * @param int $length
+   *   The length of the password.
    *
-   * @param $length
    * @return bool|string
+   *   The generate password.
+   *
    * @throws \Exception
    */
   private function generatePassword($length) {
@@ -764,13 +856,16 @@ class AuthController extends ControllerBase {
   /**
    * Create the Drupal user based on the Auth0 user profile.
    *
-   * @param $userInfo
-   * @return mixed
+   * @param array $userInfo
+   *   The user info array.
+   *
+   * @return \Drupal\user\Entity\User
+   *   The drupal user entity.
+   *
    * @throws \Exception
    */
-  protected function createDrupalUser($userInfo) {
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
-    $user_name_claim = $config->get('auth0_username_claim');
+  protected function createDrupalUser(array $userInfo) {
+    $user_name_claim = $this->config->get('auth0_username_claim');
     if ($user_name_claim == '') {
       $user_name_claim = 'nickname';
     }
@@ -807,10 +902,15 @@ class AuthController extends ControllerBase {
    * Send the verification email.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The current request.
+   *
    * @return \Symfony\Component\HttpFoundation\RedirectResponse
+   *   The redirect response.
+   *
    * @throws \Auth0\SDK\Exception\CoreException
+   *   Exception thrown when validating email.
    */
-  public function verify_email(Request $request) {
+  public function verifyEmail(Request $request) {
     $idToken = $request->get('idToken');
 
     // Validate the ID Token.
@@ -827,7 +927,7 @@ class AuthController extends ControllerBase {
       $user = $jwt_verifier->verifyAndDecode($idToken);
     }
     catch (\Exception $e) {
-      return $this->failLogin(t('There was a problem resending the verification email, sorry for the inconvenience.'),
+      return $this->failLogin($this->t('There was a problem resending the verification email, sorry for the inconvenience.'),
         "Failed to verify and decode the JWT ($idToken) for the verify email page: " . $e->getMessage());
     }
 
@@ -838,19 +938,18 @@ class AuthController extends ControllerBase {
       $client = \Drupal::httpClient();
 
       $client->request('POST', $url, [
-          "headers" => [
-            "Authorization" => "Bearer $idToken",
-          ],
-        ]
-      );
+        "headers" => [
+          "Authorization" => "Bearer $idToken",
+        ],
+      ]);
 
-      drupal_set_message(t('An Authorization email was sent to your account'));
+      drupal_set_message($this->t('An Authorization email was sent to your account'));
     }
     catch (\UnexpectedValueException $e) {
-      drupal_set_message(t('Your session has expired.'), 'error');
+      drupal_set_message($this->t('Your session has expired.'), 'error');
     }
     catch (\Exception $e) {
-      drupal_set_message(t('Sorry, we couldnt send the email'), 'error');
+      drupal_set_message($this->t('Sorry, we couldnt send the email'), 'error');
     }
 
     return new RedirectResponse('/');
