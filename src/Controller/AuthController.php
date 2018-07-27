@@ -7,8 +7,8 @@ namespace Drupal\auth0\Controller;
  * Contains \Drupal\auth0\Controller\AuthController.
  */
 
-// Create a variable to store the path to this module and load vendor
-// files if they exist.
+// Create a variable to store the path to this module.
+// Load vendor files if they exist.
 define('AUTH0_PATH', drupal_get_path('module', 'auth0'));
 
 if (file_exists(AUTH0_PATH . '/vendor/autoload.php')) {
@@ -83,6 +83,7 @@ class AuthController extends ControllerBase {
    * @param \Drupal\Core\Session\SessionManagerInterface $sessionManager
    *   The current session.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory.
    */
   public function __construct(
     PrivateTempStoreFactory $tempStoreFactory,
@@ -148,7 +149,7 @@ class AuthController extends ControllerBase {
     }
 
     // If supporting SSO, redirect to the hosted login page for authorization.
-    if ($this->redirectForSso == TRUE) {
+    if ($this->redirectForSso === TRUE) {
       $prompt = 'none';
       return new TrustedRedirectResponse($this->buildAuthorizeUrl($prompt, $returnTo));
     }
@@ -200,8 +201,8 @@ class AuthController extends ControllerBase {
    *   The nonce string.
    */
   protected function getNonce($returnTo) {
-    // Have to start the session after putting something into the session,
-    // or we don't actually start it!
+    // Have to start the session after putting something into the session, or
+    // we don't actually start it!
     if (!$this->sessionManager->isStarted() && !isset($_SESSION['auth0_is_session_started'])) {
       $_SESSION['auth0_is_session_started'] = 'yes';
       $this->sessionManager->start();
@@ -647,7 +648,7 @@ class AuthController extends ControllerBase {
    * @param array $userInfo
    *   The user info array.
    * @param \Drupal\user\Entity\User $user
-   *   The drupal user entity.
+   *   The Drupal user entity.
    * @param array $edit
    *   The edit array.
    */
@@ -805,7 +806,7 @@ class AuthController extends ControllerBase {
    * @param array $userInfo
    *   The user info array.
    * @param int $uid
-   *   The drupal user id.
+   *   The Drupal user id.
    */
   protected function insertAuth0User(array $userInfo, $uid) {
 
@@ -860,7 +861,7 @@ class AuthController extends ControllerBase {
    *   The user info array.
    *
    * @return \Drupal\user\Entity\User
-   *   The drupal user entity.
+   *   The Drupal user entity.
    *
    * @throws \Exception
    */
@@ -910,7 +911,7 @@ class AuthController extends ControllerBase {
    * @throws \Auth0\SDK\Exception\CoreException
    *   Exception thrown when validating email.
    */
-  public function verifyEmail(Request $request) {
+  public function verify_email(Request $request) {
     $idToken = $request->get('idToken');
 
     // Validate the ID Token.

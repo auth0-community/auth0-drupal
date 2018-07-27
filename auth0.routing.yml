@@ -35,7 +35,7 @@ auth0.logout:
 auth0.verify_email:
   path: '/auth0/verify_email'
   defaults:
-    _controller: '\Drupal\auth0\Controller\AuthController::verifyEmail'
+    _controller: '\Drupal\auth0\Controller\AuthController::verify_email'
   requirements:
     _access: 'TRUE'
 
