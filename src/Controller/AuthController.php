@@ -82,13 +82,10 @@ class AuthController extends ControllerBase {
    *   The temp store factory.
    * @param \Drupal\Core\Session\SessionManagerInterface $sessionManager
    *   The current session.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
-   *   The config factory.
    */
   public function __construct(
     PrivateTempStoreFactory $tempStoreFactory,
-    SessionManagerInterface $sessionManager,
-    ConfigFactoryInterface $configFactory
+    SessionManagerInterface $sessionManager
   ) {
     // Ensure the pages this controller servers never gets cached.
     \Drupal::service('page_cache_kill_switch')->trigger();
@@ -99,7 +96,7 @@ class AuthController extends ControllerBase {
     $this->tempStore = $tempStoreFactory->get(AuthController::SESSION);
     $this->sessionManager = $sessionManager;
     $this->logger = \Drupal::logger(AuthController::AUTH0_LOGGER);
-    $this->config = $configFactory->get('auth0.settings');
+    $this->config = \Drupal::service('config.factory')->get('auth0.settings');
     $this->domain = $this->config->get(AuthController::AUTH0_DOMAIN);
     $this->clientId = $this->config->get(AuthController::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthController::AUTH0_CLIENT_SECRET);
@@ -117,8 +114,7 @@ class AuthController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
         $container->get('user.private_tempstore'),
-        $container->get('session_manager'),
-        $container->get('config.factory')
+        $container->get('session_manager')
     );
   }
 
@@ -183,8 +179,8 @@ class AuthController extends ControllerBase {
 
     user_logout();
 
-    // If we are using SSO, we need to logout completely from Auth0, otherwise
-    // they will just logout of their client.
+    // If we are using SSO, we need to logout completely from Auth0,
+    // otherwise they will just logout of their client.
     return new TrustedRedirectResponse($auth0Api->get_logout_link(
         $base_root,
         $this->redirectForSso ? NULL : $this->clientId)
@@ -561,7 +557,7 @@ class AuthController extends ControllerBase {
       $user = $joinUser;
     }
     else {
-      \Drupal::logger('auth0')->notice($user_name_used . ' creating new drupal user from auth0 user');
+      \Drupal::logger('auth0')->notice($user_name_used . ' creating new Drupal user from Auth0 user');
 
       // If we are here, we need to create the user.
       $user = $this->createDrupalUser($userInfo);
@@ -631,7 +627,7 @@ class AuthController extends ControllerBase {
    * @param array $userInfo
    *   The user info array.
    * @param \Drupal\user\Entity\User $user
-   *   The drupal user entity.
+   *   The Drupal user entity.
    */
   protected function auth0UpdateFieldsAndRoles(array $userInfo, User $user) {
 
