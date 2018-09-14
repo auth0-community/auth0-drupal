@@ -1,0 +1,4 @@
+services:
+  auth0.helper:
+    class: Drupal\auth0\Util\AuthHelper
+    arguments: ['@logger.factory', '@config.factory']

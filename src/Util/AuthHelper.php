@@ -9,6 +9,8 @@ namespace Drupal\auth0\Util;
 
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\API\Authentication;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * Controller routines for auth0 authentication.
@@ -34,10 +36,18 @@ class AuthHelper {
 
   /**
    * Initialize the Helper.
+   *
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   *   The logger factory.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The config factory.
    */
-  public function __construct() {
-    $this->logger = \Drupal::logger(AuthHelper::AUTH0_LOGGER);
-    $this->config = \Drupal::service('config.factory')->get('auth0.settings');
+  public function __construct(
+    LoggerChannelFactoryInterface $logger_factory,
+    ConfigFactoryInterface $config_factory
+  ) {
+    $this->logger = $logger_factory->get(AuthHelper::AUTH0_LOGGER);
+    $this->config = $config_factory->get('auth0.settings');
     $this->domain = $this->config->get(AuthHelper::AUTH0_DOMAIN);
     $this->clientId = $this->config->get(AuthHelper::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthHelper::AUTH0_CLIENT_SECRET);

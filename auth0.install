@@ -30,9 +30,9 @@ function auth0_schema() {
       ),
     ),
     'indexes' => array(
-      'drupal_id' => array('drupal_id'),
+      'drupal_id' => ['drupal_id'],
     ),
-    'primary key' => array('auth0_id'),
+    'primary key' => ['auth0_id'],
   );
 
   return $schema;
@@ -56,20 +56,20 @@ function auth0_install() {
 
   $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
   $config->set('auth0_form_title', 'Sign In')
-          ->set('auth0_allow_signup', TRUE)
-          ->set('auth0_allow_offline_access', FALSE)
-          ->set('auth0_redirect_for_sso', FALSE)
-          ->set('auth0_widget_cdn', '//cdn.auth0.com/js/lock/11.0/lock.min.js')
-          ->set('auth0_requires_verified_email', TRUE)
-          ->set('auth0_join_user_by_mail_enabled', FALSE)
-          ->set('auth0_username_claim', 'nickname')
-          ->set('auth0_login_css', $css)
-          ->set('auth0_auto_register', FALSE)
-          ->set('auth0_lock_extra_settings', '')
-          ->set('auth0_claim_mapping', '')
-          ->set('auth0_claim_to_use_for_role', '')
-          ->set('auth0_role_mapping', '')
-          ->save();
+    ->set('auth0_allow_signup', TRUE)
+    ->set('auth0_allow_offline_access', FALSE)
+    ->set('auth0_redirect_for_sso', FALSE)
+    ->set('auth0_widget_cdn', '//cdn.auth0.com/js/lock/11.0/lock.min.js')
+    ->set('auth0_requires_verified_email', TRUE)
+    ->set('auth0_join_user_by_mail_enabled', FALSE)
+    ->set('auth0_username_claim', 'nickname')
+    ->set('auth0_login_css', $css)
+    ->set('auth0_auto_register', FALSE)
+    ->set('auth0_lock_extra_settings', '')
+    ->set('auth0_claim_mapping', '')
+    ->set('auth0_claim_to_use_for_role', '')
+    ->set('auth0_role_mapping', '')
+    ->save();
 }
 
 /**

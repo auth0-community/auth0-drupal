@@ -27,7 +27,7 @@ class BasicAdvancedForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
 
-    $config = \Drupal::service('config.factory')->get('auth0.settings');
+    $config = $this->configFactory()->get('auth0.settings');
 
     $form['auth0_form_title'] = [
       '#type' => 'textfield',
@@ -115,7 +115,7 @@ Drupal user account.
     // Enhancement to support mapping claims to user attributes and to roles.
     $form['auth0_claim_mapping'] = [
       '#type' => 'textarea',
-      '#title' => t('Mapping of Claims to Profile Fields (one per line):'),
+      '#title' => $this->t('Mapping of Claims to Profile Fields (one per line):'),
       '#cols' => 50,
       '#rows' => 5,
       '#default_value' => $config->get('auth0_claim_mapping'),
@@ -173,7 +173,7 @@ Drupal roles not listed above will not be changed by this module.
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
 
-    $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
+    $config = $this->configFactory()->getEditable('auth0.settings');
     $config->set('auth0_form_title', $form_state->getValue('auth0_form_title'))
       ->set('auth0_allow_signup', $form_state->getValue('auth0_allow_signup'))
       ->set('auth0_allow_offline_access', $form_state->getValue('auth0_allow_offline_access'))
