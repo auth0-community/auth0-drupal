@@ -10,21 +10,21 @@
  */
 function auth0_schema() {
   $schema['auth0_user'] = array(
-    'description' => 'Joins auth0 users with drupal users.',
+    'description' => 'Joins Auth0 users with Drupal users.',
     'fields' => array(
       'auth0_id' => array(
-        'description' => 'The user id on auth0',
+        'description' => 'The user id on Auth0',
         'type' => 'varchar',
         'length' => 100,
         'not null' => TRUE,
       ),
       'drupal_id' => array(
-        'description' => 'The user id on drupal',
+        'description' => 'The user id on Drupal',
         'type' => 'int',
         'not null' => TRUE,
       ),
       'auth0_object' => array(
-        'description' => 'A serialized version of the auth0 user',
+        'description' => 'A serialized version of the Auth0 user',
         'type' => 'text',
         'not null' => TRUE,
       ),

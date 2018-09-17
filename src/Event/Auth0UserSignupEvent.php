@@ -43,7 +43,7 @@ class Auth0UserSignupEvent extends Event {
   }
 
   /**
-   * Get the drupal user.
+   * Get the Drupal user.
    *
    * @return \Drupal\user\UserInterface
    *   The current user.
