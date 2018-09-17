@@ -73,10 +73,10 @@ class BasicAdvancedForm extends FormBase {
 
     $form['auth0_join_user_by_mail_enabled'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Link auth0 logins to drupal users by email address'),
+      '#title' => $this->t('Link Auth0 logins to Drupal users by email address'),
       '#default_value' => $config->get('auth0_join_user_by_mail_enabled'),
       '#description' => $this->t('If enabled, when a user logs into Drupal for the first time, the system will use the email
-address of the Auth0 user to search for a drupal user with the same email address and setup a link to that
+address of the Auth0 user to search for a Drupal user with the same email address and setup a link to that
 Drupal user account.
 <br/>If not enabled, then a new Drupal user will be created even if a Drupal user with the same email address already exists.
 '),
@@ -140,11 +140,11 @@ Drupal user account.
       '#type' => 'textarea',
       '#title' => $this->t('Mapping of Claim Role Values to Drupal Roles (one per line)'),
       '#default_value' => $config->get('auth0_role_mapping'),
-      '#description' => $this->t('Enter role mappings here in the format &lt;auth0 claim value>|&lt;drupal role name> (one per line), e.g.:
+      '#description' => $this->t('Enter role mappings here in the format &lt;Auth0 claim value>|&lt;Drupal role name> (one per line), e.g.:
 <br/>admin|administrator
 <br/>poweruser|power users
 <br/>
-<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.
+<br/>NOTE: for any Drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.
 Drupal roles not listed above will not be changed by this module.
 <br/>&nbsp;
 '),

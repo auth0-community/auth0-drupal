@@ -64,18 +64,18 @@ Some of the authentication providers have email, other doesnt (example twitter).
 If you check this box, users will be required to have a verified email in order to login.
 
 * Login widget css:
-This is the basic css used to fit the login widget to the drupal default theme, but if you have a custom theme, you may want to change this as well
+This is the basic css used to fit the login widget to the Drupal default theme, but if you have a custom theme, you may want to change this as well
 
 TECHNICAL NOTES
 ---------------
 
-**IMPORTANT**: By using this plugin you are delegating the site authentication to Auth0. That means that you won't be using the drupal database to authenticate users anymore and the default login box won't show anymore. However, we can still associate your existing users by merging them by email. This section explains how.
+**IMPORTANT**: By using this plugin you are delegating the site authentication to Auth0. That means that you won't be using the Drupal database to authenticate users anymore and the default login box won't show anymore. However, we can still associate your existing users by merging them by email. This section explains how.
 
 When you install this plugin you have at least one existing user in the database (the admin user). If the site is already being used, you probably have more than just the admin. We want you to keep those users, of course.
 
-Auth0 allows multiple authentication providers. You can have social providers like Facebook, Twitter, Google+, etc., you can have a database of users/passwords (just like drupal but hosted in Auth0) or you can use an Enterprise directory like Active Directory, LDAP, Office365, SAML and others. All those authentication providers might give you an email and a flag indicating whether the email was verified or not. We use that email (only if its verified) to associate a previous **existing** user with the one coming from Auth0.
+Auth0 allows multiple authentication providers. You can have social providers like Facebook, Twitter, Google+, etc., you can have a database of users/passwords (just like Drupal but hosted in Auth0) or you can use an Enterprise directory like Active Directory, LDAP, Office365, SAML and others. All those authentication providers might give you an email and a flag indicating whether the email was verified or not. We use that email (only if its verified) to associate a previous **existing** user with the one coming from Auth0.
 
-If the email was not verified and there is an account with that email in drupal, the user will be presented with a message saying that the email was not verified and a link to "Re-send the verification email".
+If the email was not verified and there is an account with that email in Drupal, the user will be presented with a message saying that the email was not verified and a link to "Re-send the verification email".
 
 
 
