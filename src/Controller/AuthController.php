@@ -162,9 +162,9 @@ class AuthController extends ControllerBase {
   /**
    * Initialize the controller.
    *
-   * @param \Drupal\user\PrivateTempStoreFactory $tempStoreFactory
+   * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
    *   The temp store factory.
-   * @param \Drupal\Core\Session\SessionManagerInterface $sessionManager
+   * @param \Drupal\Core\Session\SessionManagerInterface $session_manager
    *   The current session.
    * @param \Drupal\Core\PageCache\ResponsePolicyInterface $page_cache
    *   Page cache.
@@ -180,8 +180,8 @@ class AuthController extends ControllerBase {
    *   The http client.
    */
   public function __construct(
-    PrivateTempStoreFactory $tempStoreFactory,
-    SessionManagerInterface $sessionManager,
+    PrivateTempStoreFactory $temp_store_factory,
+    SessionManagerInterface $session_manager,
     ResponsePolicyInterface $page_cache,
     LoggerChannelFactoryInterface $logger_factory,
     EventDispatcherInterface $event_dispatcher,
@@ -195,8 +195,8 @@ class AuthController extends ControllerBase {
     $this->helper = $auth0_helper;
 
     $this->eventDispatcher = $event_dispatcher;
-    $this->tempStore = $tempStoreFactory->get(AuthController::SESSION);
-    $this->sessionManager = $sessionManager;
+    $this->tempStore = $temp_store_factory->get(AuthController::SESSION);
+    $this->sessionManager = $session_manager;
     $this->logger = $logger_factory->get(AuthController::AUTH0_LOGGER);
     $this->auth0Logger = $logger_factory->get('auth0');
     $this->config = $config_factory->get('auth0.settings');
@@ -534,11 +534,11 @@ class AuthController extends ControllerBase {
 
     // See if there is a user in the auth0_user table with the user
     // info client ID.
-    $this->auth0Logger->notice($userInfo['user_id'] . ' looking up drupal user by auth0 user_id');
+    $this->auth0Logger->notice($userInfo['user_id'] . ' looking up Drupal user by Auth0 user_id');
     $user = $this->findAuth0User($userInfo['user_id']);
 
     if ($user) {
-      $this->auth0Logger->notice('uid of existing drupal user found');
+      $this->auth0Logger->notice('uid of existing Drupal user found');
 
       // User exists, update the auth0_user with the new userInfo object.
       $this->updateAuth0User($userInfo);
@@ -550,7 +550,7 @@ class AuthController extends ControllerBase {
       $this->eventDispatcher->dispatch(Auth0UserSigninEvent::NAME, $event);
     }
     else {
-      $this->auth0Logger->notice('existing drupal user NOT found');
+      $this->auth0Logger->notice('existing Drupal user NOT found');
 
       try {
         $user = $this->signupUser($userInfo);
@@ -637,7 +637,7 @@ class AuthController extends ControllerBase {
       : str_replace('|', '_', $userInfo['user_id']);
 
     if ($this->config->get('auth0_join_user_by_mail_enabled') && !empty($userInfo['email'])) {
-      $this->auth0Logger->notice($userInfo['email'] . 'join user by mail is enabled, looking up user by email');
+      $this->auth0Logger->notice($userInfo['email'] . ' join user by mail is enabled, looking up user by email');
       // If the user has a verified email or is a database user try to see if
       // there is a user to join with. The isDatabase is because we don't want
       // to allow database user creation if there is an existing one with no
@@ -655,7 +655,7 @@ class AuthController extends ControllerBase {
     }
 
     if ($joinUser) {
-      $this->auth0Logger->notice($joinUser->id() . ' drupal user found by email with uid');
+      $this->auth0Logger->notice($joinUser->id() . ' Drupal user found by email with uid');
 
       // If we are here, we have a potential join user.
       // Don't allow creation or assignation of user if the email is not
