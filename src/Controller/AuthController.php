@@ -262,16 +262,25 @@ class AuthController extends ControllerBase {
     /* Not doing SSO, so show login page */
     return [
       '#theme' => 'auth0_login',
-      '#domain' => $this->config->get('auth0_domain'),
-      '#clientID' => $this->config->get('auth0_client_id'),
-      '#state' => $this->getNonce($returnTo),
-      '#showSignup' => $this->config->get('auth0_allow_signup'),
-      '#offlineAccess' => $this->offlineAccess,
-      '#widgetCdn' => $this->config->get('auth0_widget_cdn'),
       '#loginCSS' => $this->config->get('auth0_login_css'),
-      '#lockExtraSettings' => $lockExtraSettings,
-      '#callbackURL' => "$base_root/auth0/callback",
-      '#scopes' => AUTH0_DEFAULT_SCOPES,
+      '#attached' => [
+        'library' => [
+          'auth0/auth0.lock',
+        ],
+        'drupalSettings' => [
+          'auth0' => [
+            'clientId' => $this->config->get('auth0_client_id'),
+            'domain' => $this->config->get('auth0_domain'),
+            'lockExtraSettings' => $lockExtraSettings,
+            'configurationBaseUrl' => 'https://cdn.auth0.com',
+            'showSignup' => $this->config->get('auth0_allow_signup'),
+            'callbackURL' => "$base_root/auth0/callback",
+            'state' => $this->helper->getNonce($returnTo),
+            'scopes' => AUTH0_DEFAULT_SCOPES,
+            'offlineAccess' => $this->offlineAccess,
+          ],
+        ],
+      ],
     ];
   }
 

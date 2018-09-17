@@ -49,3 +49,19 @@ function auth0_signin_with_refresh_token($token) {
 
   return $helper->getUserUsingRefreshToken($token);
 }
+
+/**
+ * Implements hook_library_info_build().
+ */
+function auth0_library_info_build() {
+  $config = \Drupal::service('config.factory')->get('auth0.settings');
+  return [
+    'auth0.widget' => [
+      'js' => [
+        $config->get('auth0_widget_cdn') => [
+          'type' => 'external',
+        ],
+      ],
+    ],
+  ];
+}
