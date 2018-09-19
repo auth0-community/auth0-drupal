@@ -23,6 +23,8 @@
       lock_options.auth.params = lock_options.auth.params || {};
       lock_options.auth.params.scope = lock_options.auth.params.scope || auth0.scopes;
       lock_options.auth.params.state = auth0.state;
+      lock_options.languageDictionary = lock_options.languageDictionary || {};
+      lock_options.languageDictionary.title = lock_options.languageDictionary.title || auth0.formTitle;
 
       if (auth0.offlineAccess === 'TRUE') {
         if (lock_options.auth.params.scope.indexOf('offline_access') < 0) {

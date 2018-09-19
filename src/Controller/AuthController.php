@@ -276,6 +276,7 @@ class AuthController extends ControllerBase {
             'state' => $this->getNonce($returnTo),
             'scopes' => AUTH0_DEFAULT_SCOPES,
             'offlineAccess' => $this->offlineAccess,
+            'formTitle' => $this->config->get('auth0_form_title'),
           ],
         ],
       ],
