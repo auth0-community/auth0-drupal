@@ -40,8 +40,6 @@ use Drupal\auth0\Util\AuthHelper;
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\Auth0;
 use Auth0\SDK\API\Authentication;
-use Auth0\SDK\API\Management;
-use Auth0\SDK\Exception\CoreException;
 use Auth0\SDK\API\Helpers\State\SessionStateHandler;
 use Auth0\SDK\Store\SessionStore;
 use GuzzleHttp\Client;
@@ -254,7 +252,7 @@ class AuthController extends ControllerBase {
     }
 
     // If supporting SSO, redirect to the hosted login page for authorization.
-    if ($this->redirectForSso === TRUE) {
+    if ($this->redirectForSso) {
       $prompt = 'none';
       return new TrustedRedirectResponse($this->buildAuthorizeUrl($prompt, $returnTo));
     }
@@ -275,7 +273,7 @@ class AuthController extends ControllerBase {
             'configurationBaseUrl' => 'https://cdn.auth0.com',
             'showSignup' => $this->config->get('auth0_allow_signup'),
             'callbackURL' => "$base_root/auth0/callback",
-            'state' => $this->helper->getNonce($returnTo),
+            'state' => $this->getNonce($returnTo),
             'scopes' => AUTH0_DEFAULT_SCOPES,
             'offlineAccess' => $this->offlineAccess,
           ],
@@ -1064,7 +1062,7 @@ class AuthController extends ControllerBase {
       drupal_set_message($this->t('Your session has expired.'), 'error');
     }
     catch (\Exception $e) {
-      drupal_set_message($this->t('Sorry, we couldnt send the email'), 'error');
+      drupal_set_message($this->t('Sorry, we could not send the email'), 'error');
     }
 
     return new RedirectResponse('/');

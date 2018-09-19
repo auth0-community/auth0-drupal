@@ -13,23 +13,14 @@ define('AUTH0_DEFAULT_USERNAME_CLAIM', 'nickname');
  * Replace a form with the lock widget.
  */
 function auth0_theme() {
-  return array(
-    'auth0_login' => array(
+  return [
+    'auth0_login' => [
       'template' => 'auth0-login',
-      'variables' => array(
-        'domain' => NULL,
-        'clientID' => NULL,
-        'state' => NULL,
-        'showSignup' => NULL,
-        'offlineAccess' => FALSE,
-        'widgetCdn' => NULL,
+      'variables' => [
         'loginCSS' => NULL,
-        'callbackURL' => NULL,
-        'lockExtraSettings' => '{}',
-        'scopes' => AUTH0_DEFAULT_SCOPES,
-      ),
-    ),
-  );
+      ],
+    ],
+  ];
 }
 
 /**

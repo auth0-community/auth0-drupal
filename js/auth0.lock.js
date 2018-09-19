@@ -13,7 +13,7 @@
         return;
       }
 
-      var lock_options = auth0.lockExtraSettings|raw;
+      var lock_options = JSON.parse( auth0.lockExtraSettings ) || {};
       lock_options.container = lock_options.container || 'auth0-login-form';
       lock_options.allowSignUp = lock_options.allowSignUp || auth0.showSignup ? "true" : "false";
       lock_options.auth = lock_options.auth || {};
@@ -30,7 +30,7 @@
         }
       }
 
-      var lock = new Auth0Lock(auth0.clientID, auth0.domain, lock_options);
+      var lock = new Auth0Lock(auth0.clientId, auth0.domain, lock_options);
 
       lock.show();
     }
