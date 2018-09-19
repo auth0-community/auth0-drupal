@@ -789,7 +789,7 @@ class AuthController extends ControllerBase {
 
         $key = $mapping[1];
         if (in_array($key, $skip_mappings)) {
-          $this->auth0Logger->notice('skipping mapping handled already by auth0 module ' . $mapping);
+          $this->auth0Logger->notice('skipping mapping handled already by Auth0 module ' . $mapping);
         }
         else {
           $value = isset($userInfo[$mapping[0]]) ? $userInfo[$mapping[0]] : '';
@@ -808,7 +808,7 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   * Updates the $user->roles of a user based on the auth0 role mappings.
+   * Updates the $user->roles of a user based on the Auth0 role mappings.
    *
    * @param array $userInfo
    *   The user info array.
@@ -915,7 +915,7 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   * Insert the auth0 user.
+   * Insert the Auth0 user.
    *
    * @param array $userInfo
    *   The user info array.
@@ -1025,7 +1025,7 @@ class AuthController extends ControllerBase {
    * @throws \Auth0\SDK\Exception\CoreException
    *   Exception thrown when validating email.
    */
-  public function verifyEmail(Request $request) {
+  public function verify_email(Request $request) {
     $idToken = $request->get('idToken');
 
     // Validate the ID Token.
