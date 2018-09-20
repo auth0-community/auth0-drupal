@@ -13,9 +13,16 @@
         return;
       }
 
-      var lock_options = JSON.parse( auth0.lockExtraSettings ) || {};
+      var lock_options = {};
+      if ( auth0.lockExtraSettings ) {
+        try {
+          lock_options = JSON.parse(auth0.lockExtraSettings);
+        } catch (error) {
+          console.error(auth0.jsonErrorMsg);
+        }
+      }
       lock_options.container = lock_options.container || 'auth0-login-form';
-      lock_options.allowSignUp = lock_options.allowSignUp || auth0.showSignup ? "true" : "false";
+      lock_options.allowSignUp = !!( lock_options.allowSignUp || auth0.showSignup );
       lock_options.auth = lock_options.auth || {};
       lock_options.auth.container = lock_options.auth.container || 'auth0-login-form';
       lock_options.auth.redirectUrl = lock_options.auth.redirectUrl || auth0.callbackURL;

@@ -277,6 +277,7 @@ class AuthController extends ControllerBase {
             'scopes' => AUTH0_DEFAULT_SCOPES,
             'offlineAccess' => $this->offlineAccess,
             'formTitle' => $this->config->get('auth0_form_title'),
+            'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
           ],
         ],
       ],
@@ -895,22 +896,21 @@ class AuthController extends ControllerBase {
    *
    * @param string $mappingListTxt
    *   The pipe list string.
-   * @param bool $makeItem0Lowercase
-   *   If to make the list lowercase.
    *
    * @return array
    *   An array of items.
    */
-  protected function auth0PipeListToArray($mappingListTxt, $makeItem0Lowercase = FALSE) {
-    $result_array = [];
-    $mappings = preg_split('/[\n\r]+/', $mappingListTxt);
+  protected function auth0PipeListToArray($mappingListTxt) {
+    $return = [];
+    $mappings = explode(PHP_EOL, $mappingListTxt);
     foreach ($mappings as $line) {
-      if (count($mapping = explode('|', trim($line))) == 2) {
-        $item_0 = ($makeItem0Lowercase) ? drupal_strtolower(trim($mapping[0])) : trim($mapping[0]);
-        $result_array[] = [$item_0, trim($mapping[1])];
+      if ( empty( $line ) || FALSE === strpos( $line, '|' ) ) {
+          continue;
       }
+      $line_parts = explode( '|', $line );
+      $return[] = array( trim($line_parts[0]), trim($line_parts[1]) );
     }
-    return $result_array;
+    return $return;
   }
 
   /**
@@ -920,6 +920,8 @@ class AuthController extends ControllerBase {
    *   The user info array.
    * @param int $uid
    *   The Drupal user id.
+   *
+   * @throws \Exception
    */
   protected function insertAuth0User(array $userInfo, $uid) {
 

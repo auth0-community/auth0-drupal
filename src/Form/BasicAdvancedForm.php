@@ -95,14 +95,18 @@ Drupal user account.
       '#type' => 'textarea',
       '#title' => $this->t('Login widget css'),
       '#default_value' => $config->get('auth0_login_css'),
-      '#description' => $this->t('This css controls how the widget look and feel.'),
+      '#description' => $this->t('CSS to control the Auth0 login form appearance.'),
     ];
 
     $form['auth0_lock_extra_settings'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Lock extra settings'),
       '#default_value' => $config->get('auth0_lock_extra_settings'),
-      '#description' => $this->t('This should be a valid JSON file. This entire object will be passed to the lock options parameter.'),
+      '#description' =>
+        $this->t('Valid JSON to pass to the Lock options parameter. ') .
+        $this->t('Options passed here will override Drupal admin settings. ') .
+        '<a href="https://auth0.com/docs/libraries/lock/v11/configuration" target="_blank">' .
+        $this->t('More information and examples. ') . '</a>',
     ];
 
     $form['auth0_auto_register'] = [
