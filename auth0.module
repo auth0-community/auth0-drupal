@@ -165,12 +165,35 @@ function auth0_callback() {
   $success = FALSE;
   if ($user_info) {
     $success = auth0_login_auth0_user($user_info, $id_token);
+  } else {
+    $q = $request['query'];
+    if(! isset($q['code'])) {
+      $success = TRUE;
+    }
   }
+  
   if (!$success) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
   }
 
-  return drupal_goto();
+  $request = drupal_parse_url($_SERVER['HTTP_REFERER']);
+  function_exists('dd') && dd($request);
+  $query = $request['query'];
+  if (isset($query['destination']))
+  {
+    $path = $query['destination'];
+  }
+  elseif (isset($query['current']))
+  {
+    $path = $query['current'];
+  } else 
+  {
+    $path = '/';
+  }
+  
+    
+  return drupal_goto($path);
+  
 }
 
 /**
@@ -188,6 +211,7 @@ function auth0_fail_with_verify_email($id_token) {
 function auth0_login_auth0_user($user_info, $id_token) {
   $requires_email = variable_get('auth0_requires_email', TRUE);
   $requires_verified_email = $requires_email && variable_get('user_email_verification', TRUE);
+  $user_name_claim = variable_get('auth0_username_claim', 'nickname');
 
   // Allow other modules to modify the Auth0 user before processing the login.
   drupal_alter('auth0_user_pre_login', $user_info, $id_token);
@@ -243,11 +267,14 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $joinUser = user_load_by_mail($user_info['email']);
       }
     } else {
-      function_exists('dd') && dd($user_info['email'], 'join user by mail is not enabled, skipping lookup user by email');
+      function_exists('dd') && dd($user_info[$user_name_claim], 'join user by username');
+      if (!empty($user_info['email_verified']) || $isDatabaseUser) {
+        $joinUser = user_load_by_name($user_info[$user_name_claim]);
+      }
     }
 
     if ($joinUser) {
-      function_exists('dd') && dd($joinUser->uid, 'drupal user found by email with uid');
+      function_exists('dd') && dd($joinUser->uid, 'drupal user found with uid');
       // If we are here, we have a potential join user.
       // Don't allow creation or assignation of user if the email is not verified, that would
       // be hijacking.
@@ -522,8 +549,9 @@ function auth0_create_user_from_auth0($user_info) {
   $user->init = $email;
 
   // If the username already exists, create a new random one.
-  $username = $user_info['nickname'];
-  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 nickname');
+  
+  $username = $user_info[$user_name_claim];
+  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 ' . $user_name_claim);
   if (user_load_by_name($username)) {
     $username .= time();
     function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
@@ -659,6 +687,13 @@ Drupal user account.
 '),
   );
 
+  $form['auth0_username_claim'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Map Auth0 claim to Drupal user name.'),
+    '#default_value' => variable_get('auth0_username_claim', 'nickname'),
+    '#description' => t('Maps the given claim field as the Drupal user name field. The default is the nickname claim'),
+  );
+  
   $form['auth0_sso'] = array(
     '#type' => 'checkbox',
     '#title' => t('SSO enabled'),
@@ -672,6 +707,21 @@ Drupal user account.
     '#default_value' => variable_get('auth0_login_css', AUTH_LOGIN_CSS),
     '#description' => t('This CSS controls the widget look and feel.'),
   );
+  
+  $form['auth0_fallback_login_css'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Fallback Login Link CSS'),
+    '#default_value' => variable_get('auth0_fallback_login_css', 'font-weight: bold; font-size: 1.5em;'),
+    '#description' => t('This CSS controls the fallback login link look and feel.'),
+  );
+
+  $form['auth0_fallback_login_text'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Fallback Login Link Text'),
+    '#default_value' => variable_get('auth0_fallback_login_text', 'Sign In'),
+    '#description' => t('This is the text for the fallback login link.'),
+  );
+    
 // Add option to have the logout url at the application level or account level
   $form['auth0_returnTo_app'] = array(
     '#type' => 'checkbox',
@@ -891,7 +941,9 @@ function template_preprocess_auth0_lock(&$vars) {
       'response_type' => 'code'
     );
   }
-  $vars['login_link'] = l(t('Log in'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
+  
+  $vars['login_link'] = l(variable_get('auth0_fallback_login_text','Sign In'), 'https://' . $vars['domain'] . '/authorize', array('query' => $query));
+  $vars['login_link_css'] = variable_get('auth0_fallback_login_css', '');
 
   // Add the custom css if specified.
   if ($css = variable_get("auth0_login_css", AUTH_LOGIN_CSS)) {

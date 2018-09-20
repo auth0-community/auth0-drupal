@@ -46,9 +46,14 @@ function auth0_uninstall() {
   variable_del('auth0_widget_cdn');
   variable_del('auth0_form_title');
   variable_del('auth0_requires_verified_email');
+  variable_del('auth0_join_user_by_mail_enabled');
   variable_del('auth0_allow_signup');
   variable_del('auth0_domain');
   variable_del('auth0_client_id');
   variable_del('auth0_client_secret');
+  variable_del('auth0_login_css');
+  variable_del('auth0_lock_extra_settings');
+  variable_del('auth0_claim_mapping');
+  variable_del('auth0_claim_to_use_for_role');
+  variable_del('auth0_role_mapping');
 }
-
