@@ -14,7 +14,7 @@
       }
 
       var lock_options = {};
-      if ( auth0.lockExtraSettings ) {
+      if (auth0.lockExtraSettings) {
         try {
           lock_options = JSON.parse(auth0.lockExtraSettings);
         } catch (error) {

@@ -102,11 +102,10 @@ Drupal user account.
       '#type' => 'textarea',
       '#title' => $this->t('Lock extra settings'),
       '#default_value' => $config->get('auth0_lock_extra_settings'),
-      '#description' =>
-        $this->t('Valid JSON to pass to the Lock options parameter. ') .
-        $this->t('Options passed here will override Drupal admin settings. ') .
-        '<a href="https://auth0.com/docs/libraries/lock/v11/configuration" target="_blank">' .
-        $this->t('More information and examples. ') . '</a>',
+      '#description' => $this->t(
+        'Valid JSON to pass to the Lock options parameter. Options passed here will override Drupal admin settings <a href="@link" target="_blank">More information and examples.</a>',
+        ['@link' => 'https://auth0.com/docs/libraries/lock/v11/configuration']
+      ),
     ];
 
     $form['auth0_auto_register'] = [

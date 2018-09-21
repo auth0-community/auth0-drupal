@@ -904,11 +904,11 @@ class AuthController extends ControllerBase {
     $return = [];
     $mappings = explode(PHP_EOL, $mappingListTxt);
     foreach ($mappings as $line) {
-      if ( empty( $line ) || FALSE === strpos( $line, '|' ) ) {
-          continue;
+      if (empty($line) || FALSE === strpos($line, '|')) {
+        continue;
       }
-      $line_parts = explode( '|', $line );
-      $return[] = array( trim($line_parts[0]), trim($line_parts[1]) );
+      $line_parts = explode('|', $line);
+      $return[] = [trim($line_parts[0]), trim($line_parts[1])];
     }
     return $return;
   }
