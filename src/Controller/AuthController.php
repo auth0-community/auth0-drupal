@@ -822,7 +822,7 @@ class AuthController extends ControllerBase {
 
     if (isset($auth0_claim_to_use_for_role) && !empty($auth0_claim_to_use_for_role)) {
       $claim_value = isset($userInfo[$auth0_claim_to_use_for_role]) ? $userInfo[$auth0_claim_to_use_for_role] : '';
-      $this->auth0Logger->notice('claim_value ' . $claim_value);
+      $this->auth0Logger->notice('claim_value ' . print_r($claim_value, TRUE));
 
       $claim_values = [];
       if (is_array($claim_value)) {
@@ -839,7 +839,7 @@ class AuthController extends ControllerBase {
       $roles_managed_by_mapping = [];
 
       foreach ($mappings as $mapping) {
-        $this->auth0Logger->notice('mapping ' . $mapping);
+        $this->auth0Logger->notice('mapping ' . print_r($mapping, TRUE));
         $roles_managed_by_mapping[] = $mapping[1];
 
         if (in_array($mapping[0], $claim_values)) {
