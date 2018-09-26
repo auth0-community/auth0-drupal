@@ -21,7 +21,7 @@ Before you start, **make sure the admin user has a valid email that you own**. T
 
 There are 2 ways to install this module detailed below. **Please note:** the Auth0 login form will not appear until the module has been configured (see [Getting Started](#getting-started) below).
 
-### Install from DO
+### Install from Drupal.org manually
 
 1. Go to the [DO Auth0 module page](https://www.drupal.org/project/auth0), scroll to "Downloads," and copy the URL to the latest version's tar.gz file. 
 2. Go to Manage > Extend and click **Install New Module**.
@@ -47,6 +47,16 @@ $ composer install
 ```
 
 3. In Manage > Extend, scroll down the the Auth0 module, click the checkbox, then click **Install**
+
+### Install from Drupal.org with Composer
+
+1. From the root of your Drupal project run:
+
+```bash
+$ composer require drupal/auth0
+```
+
+2. In Manage > Extend, scroll down the the Auth0 module, click the checkbox, then click **Install**
 
 ## Getting Started
 
