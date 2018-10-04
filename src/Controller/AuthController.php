@@ -533,45 +533,40 @@ class AuthController extends ControllerBase {
 
     try {
       $this->validateUserEmail($userInfo);
+
+      // See if there is a user in the auth0_user table with the user
+      // info client ID.
+      $this->auth0Logger->notice($userInfo['user_id'] . ' looking up Drupal user by Auth0 user_id');
+      $user = $this->findAuth0User($userInfo['user_id']);
+
+      if ($user) {
+        $this->auth0Logger->notice('uid of existing Drupal user found');
+
+        // User exists, update the auth0_user with the new userInfo object.
+        $this->updateAuth0User($userInfo);
+
+        // Update field and role mappings.
+        $this->auth0UpdateFieldsAndRoles($userInfo, $user);
+
+        $event = new Auth0UserSigninEvent($user, $userInfo, $refreshToken, $expiresAt);
+        $this->eventDispatcher->dispatch(Auth0UserSigninEvent::NAME, $event);
+      }
+      else {
+        $this->auth0Logger->notice('existing Drupal user NOT found');
+
+        $user = $this->signupUser($userInfo);
+
+        $this->insertAuth0User($userInfo, $user->id());
+
+        $event = new Auth0UserSignupEvent($user, $userInfo);
+        $this->eventDispatcher->dispatch(Auth0UserSignupEvent::NAME, $event);
+      }  
     }
     catch (EmailNotSetException $e) {
       return $this->failLogin($this->t('This account does not have an email associated. Please login with a different provider.'), 'No Email Found');
     }
     catch (EmailNotVerifiedException $e) {
       return $this->auth0FailWithVerifyEmail($idToken);
-    }
-
-    // See if there is a user in the auth0_user table with the user
-    // info client ID.
-    $this->auth0Logger->notice($userInfo['user_id'] . ' looking up Drupal user by Auth0 user_id');
-    $user = $this->findAuth0User($userInfo['user_id']);
-
-    if ($user) {
-      $this->auth0Logger->notice('uid of existing Drupal user found');
-
-      // User exists, update the auth0_user with the new userInfo object.
-      $this->updateAuth0User($userInfo);
-
-      // Update field and role mappings.
-      $this->auth0UpdateFieldsAndRoles($userInfo, $user);
-
-      $event = new Auth0UserSigninEvent($user, $userInfo, $refreshToken, $expiresAt);
-      $this->eventDispatcher->dispatch(Auth0UserSigninEvent::NAME, $event);
-    }
-    else {
-      $this->auth0Logger->notice('existing Drupal user NOT found');
-
-      try {
-        $user = $this->signupUser($userInfo);
-      }
-      catch (EmailNotVerifiedException $e) {
-        return $this->auth0FailWithVerifyEmail($idToken);
-      }
-
-      $this->insertAuth0User($userInfo, $user->id());
-
-      $event = new Auth0UserSignupEvent($user, $userInfo);
-      $this->eventDispatcher->dispatch(Auth0UserSignupEvent::NAME, $event);
     }
 
     user_login_finalize($user);
