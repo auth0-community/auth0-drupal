@@ -252,7 +252,7 @@ function auth0_callback() {
 
   if (isset($user_info['sub']) && !isset($user_info['user_id'])) $user_info['user_id'] = $user_info['sub'];
   if ($user_info) {
-    $success = auth0_login_auth0_user($user_info, $id_token);
+    $success = auth0_login_auth0_user($user_info, $auth0->getAccessToken());
   }
   if (!$success) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
@@ -955,11 +955,13 @@ function _auth0_generate_authorize_url($prompt) {
   unset($query['redirect_uri']);
   unset($query['connection']);
 
+  $domain = check_plain(variable_get("auth0_domain", ''));
+
   $additional_params = [];
-  $additional_params['scope'] = 'openid profile email';
+  $additional_params['scope'] = 'openid profile email read:current_user';
+  $additional_params['audience'] = 'https://' . $domain . '/api/v2/';
   $additional_params = array_merge($additional_params, $query);
 
-  $domain = check_plain(variable_get("auth0_domain", ''));
   $client_id = check_plain(variable_get("auth0_client_id", ''));
   $auth0Api = new Authentication($domain, $client_id);
   return $auth0Api->get_authorize_link($response_type, $redirect_uri, $connection, $state, $additional_params);
@@ -1004,7 +1006,7 @@ function template_preprocess_auth0_lock(&$vars) {
   $vars['params']['auth']['responseType'] = isset($vars['params']['auth']['responseType']) ? $vars['params']['auth']['responseType'] : 'code';
 
   $vars['params']['auth']['params'] = isset($vars['params']['auth']['params']) ? $vars['params']['auth']['params'] : array();
-  $vars['params']['auth']['params']['scope'] = isset($vars['params']['auth']['params']['scope']) ? $vars['params']['auth']['params']['scope'] : 'openid email';
+  $vars['params']['auth']['params']['scope'] = isset($vars['params']['auth']['params']['scope']) ? $vars['params']['auth']['params']['scope'] : 'openid email read:current_user';
   if (!isset($_SESSION['auth0_session_started'])) {
     $_SESSION['auth0_session_started'] = TRUE;
     drupal_session_start();
