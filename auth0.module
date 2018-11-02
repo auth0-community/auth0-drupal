@@ -117,16 +117,16 @@ function auth0_verify_email_page() {
 
   $token = $_REQUEST['idToken'];
   $settings = _auth0_get_settings();
-  $user = auth0_parse_jwt_token($token);
+  $parsed_token = auth0_parse_jwt_token($token);
 
-  if ($user === FALSE) {
+  if ($parsed_token === FALSE) {
     drupal_set_message(t('There was a problem re-sending the email.'), 'error');
     watchdog('Auth0', 'Error validating the token while resending the email', [], WATCHDOG_ERROR);
     drupal_goto();
   }
 
   try {
-    $user_id = $user->sub;
+    $user_id = $parsed_token->sub;
     $url = 'https://' . $settings['domain'] . '/api/users/ ' . $user_id / '/send_verification_email';
     $headers = ['Authorization' => 'Bearer ' . $token];
     $result = drupal_http_request($url, ['headers' => $headers, 'method' => 'POST']);
@@ -195,8 +195,6 @@ function auth0_callback() {
     drupal_goto();
   }
 
-  // var_dump($auth0); die;
-
   // Check the state
   $query = drupal_get_query_parameters();
   if (!isset($query['state']) || !drupal_valid_token($query['state'], 'auth0_state')) {
@@ -205,8 +203,8 @@ function auth0_callback() {
     drupal_goto();
   }
 
-  $user = auth0_parse_jwt_token($id_token);
-  if ($user === FALSE) {
+  $parsed_token = auth0_parse_jwt_token($id_token);
+  if ($parsed_token === FALSE) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     drupal_goto();
   }
@@ -301,8 +299,8 @@ function auth0_login_auth0_user($user_info, $id_token) {
         'audience' => 'https://' . $settings['domain'] . '/api/v2/',
       ]);
       $mgmt_client = new Management($mgmt_token['access_token'], $settings['domain']);
-      $user = $mgmt_client->users->get($user_info['user_id']);
-      $user_info['identities'] = $user['identities'];
+      $extra_details = $mgmt_client->users->get($user_info['user_id']);
+      $user_info['identities'] = $extra_details['identities'];
     }
 
     foreach ($user_info['identities'] as $identity) {
@@ -348,15 +346,17 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $uid = auth0_create_user_from_auth0($user_info);
       }
     }
-
     function_exists('dd') && dd($uid, 'inserting auth0 user with uid');
-    auth0_insert_auth0_user($user_info, $uid);
 
-    // Update field and role mappings.
-    auth0_update_fields_and_roles($user_info, $uid);
+    if (!empty($uid)) {
+      auth0_insert_auth0_user($user_info, $uid);
 
-      // Log in the user.
-    return auth0_authenticate_user($uid);
+      // Update field and role mappings.
+      auth0_update_fields_and_roles($user_info, $uid);
+
+        // Log in the user.
+      return auth0_authenticate_user($uid);
+    }
   }
 
   return FALSE;
@@ -592,15 +592,17 @@ function auth0_insert_auth0_user($user_info, $uid) {
  * Create a new Drupal user for an authenticated Auth0 user.
  */
 function auth0_create_user_from_auth0($user_info) {
-  $user = new stdClass();
   if (isset($user_info['email']) && !empty($user_info['email'])) {
     $email = $user_info['email'];
   }
   else {
     $email = "";
   }
-  $user->mail = $email;
-  $user->init = $email;
+  $fields = array(
+    'mail' => $email,
+    'pass' => user_password(),
+    'init' => $email,
+  );
 
   // If the username already exists, create a new random one.
   $username = $user_info['nickname'];
@@ -609,32 +611,33 @@ function auth0_create_user_from_auth0($user_info) {
     $username .= time();
     function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
   }
-  $user->name = $username;
-  $user->is_new = TRUE;
+  $fields['name'] = $username;
 
   // If auto_register from auth0 is enabled, they are active immediately,
   // otherwise check the site registration settings
   $auth0_auto_register = variable_get('auth0_auto_register', FALSE);
   if ($auth0_auto_register) {
-    $user->status = TRUE;
+    $fields['status'] = TRUE;
   }
   else {
-    $user->status = variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_VISITORS;
+    $fields['status'] = variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_VISITORS;
   }
-  $user->pass = user_password();
-  function_exists('dd') && dd($user, 'saving new drupal user');
-  $new_user = user_save($user);
+  function_exists('dd') && dd($fields, 'saving new drupal user');
+  $account = user_save('', $fields);
 
-  if ($user) {
-    watchdog('Auth0', 'Account created for %name', ['%name' => $user->name], WATCHDOG_NOTICE, l(t('edit'), 'user/' . $user->uid . '/edit'));
+  if ($account === FALSE) {
+    drupal_set_message(t('There was an unknown error creating your account, sorry for the inconvenience.'));
+    watchdog('Auth0', 'Unable to create account for %name', ['%name' => $fields['name']], WATCHDOG_NOTICE);
   }
+  else {
+    // Notify the user if they must have approval.
+    if (!$account->status) {
+      drupal_set_message(t('Thank you for applying for an account. Your account is currently pending approval by the site administrator.'));
+    }
 
-  // Notify the user if they must have approval.
-  if (!$user->status) {
-    drupal_set_message(t('Thank you for applying for an account. Your account is currently pending approval by the site administrator.'));
+    watchdog('Auth0', 'Account created for %name', ['%name' => $account->name], WATCHDOG_NOTICE, l(t('edit'), 'user/' . $account->uid . '/edit'));
+    return $account->uid;
   }
-
-  return $new_user->uid;
 }
 
 /**
@@ -885,14 +888,14 @@ function auth0_form_alter(&$form, $form_state, $form_id) {
  * Disable email and password fields for users who have logged in with Auth0.
  */
 function auth0_form_user_profile_form_alter(&$form, $form_state) {
-  $user = $form_state['user'];
-  if ($object = auth0_get_auth0_object_from_drupal_uid($user->uid)) {
+  $account = $form_state['user'];
+  if ($object = auth0_get_auth0_object_from_drupal_uid($account->uid)) {
     // If the user has an Auth0 profile then we simply disable the
     // password/email fields.
 
     // If this account was created without an email address hide the field,
     // otherwise show it but disable it.
-    if ($user->mail) {
+    if ($account->mail) {
       $form['account']['mail']['#disabled'] = TRUE;
     }
     else {
@@ -1185,7 +1188,7 @@ function auth0_parse_jwt_token($token) {
   $jwt_verifier = new JWTVerifier($auth0_settings);
 
   try {
-    $user = $jwt_verifier->verifyAndDecode($token);
+    $parsed_token = $jwt_verifier->verifyAndDecode($token);
   }
   catch (\Exception $e) {
     $watchdog_vars = ['%msg' => $e->getMessage()];
@@ -1193,5 +1196,5 @@ function auth0_parse_jwt_token($token) {
     return FALSE;
   }
 
-  return $user;
+  return $parsed_token;
 }
