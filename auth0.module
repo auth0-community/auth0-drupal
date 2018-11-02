@@ -1,97 +1,96 @@
 <?php
 
+/**
+ * @file
+ *   Main module file for integrating the Auth0 authentication service.
+ */
+
 use Auth0\SDK\Auth0;
 use Auth0\SDK\API\Authentication;
 use Auth0\SDK\API\Management;
 use Auth0\SDK\JWTVerifier;
 
-// Define some module default settings
-define('AUTH0_WIDGET_CDN', 'https://cdn.auth0.com/js/lock/10.3/lock.min.js');
-define('AUTH_LOGIN_CSS', "#a0-widget .a0-panel {
-    min-width: 90%;
-    padding: 5%;
-    box-shadow: none;
-    -webkit-box-shadow: none;
-}
-#a0-widget .a0-panel {
-    background-color: #f6f6f2;
-    border-color: #f9f9f9;
-}");
-
+// Define some module default settings.
+define('AUTH0_WIDGET_CDN', 'https://cdn.auth0.com/js/lock/11.6.1/lock.min.js');
 
 /**
  * Implements hook_menu().
  */
 function auth0_menu() {
-  $items = array();
+  $items = [];
 
   // Add the callback controller.
-  $items['auth0/callback'] = array(
+  $items['auth0/callback'] = [
     'description' => 'Callback handler from auth0',
     'page callback' => 'auth0_callback',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-  );
+  ];
 
-  $items['auth0/verify_email'] = array(
+  $items['auth0/verify_email'] = [
     'description' => 'Verify email action',
     'page callback' => 'auth0_verify_email_page',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-  );
+  ];
 
-  $items['user/%user/auth0'] = array(
+  $items['user/%user/auth0'] = [
     'title' => 'Auth0',
     'description' => 'Verify email action',
     'page callback' => 'auth0_user_info_page',
-    'page arguments' => array(1),
-    'access arguments' => array('administer users'),
+    'page arguments' => [1],
+    'access arguments' => ['administer users'],
     'type' => MENU_LOCAL_TASK,
     'weight' => 100,
-  );
-
+  ];
 
   // Add an admin configuration page.
-  $items['admin/config/people/auth0'] = array(
+  $items['admin/config/people/auth0'] = [
     'title' => 'Auth0 Login Settings',
     'description' => 'Configure your auth0 account and widget.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('auth0_basic_settings_form'),
-    'access arguments' => array('administer site configuration'),
-  );
+    'page arguments' => ['auth0_basic_settings_form'],
+    'access arguments' => ['administer site configuration'],
+  ];
 
   // Basic configuration tab.
-  $items['admin/config/people/auth0/basic'] = array(
+  $items['admin/config/people/auth0/basic'] = [
     'title' => 'Basic',
     'description' => 'Configure your auth0 account and widget.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('auth0_basic_settings_form'),
-    'access arguments' => array('administer site configuration'),
+    'page arguments' => ['auth0_basic_settings_form'],
+    'access arguments' => ['administer site configuration'],
     'type' => MENU_DEFAULT_LOCAL_TASK,
-  );
+  ];
 
   // Advanced configuration tab.
-  $items['admin/config/people/auth0/advanced'] = array(
+  $items['admin/config/people/auth0/advanced'] = [
     'title' => 'Advanced',
     'description' => 'Configure your auth0 account and widget.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('auth0_advanced_settings_form'),
-    'access arguments' => array('administer site configuration'),
+    'page arguments' => ['auth0_advanced_settings_form'],
+    'access arguments' => ['administer site configuration'],
     'type' => MENU_LOCAL_TASK,
     'weight' => 10
-  );
+  ];
 
   return $items;
 }
 
 /**
  * Display auth0 info for the given user.
+ *
+ * @params object $user
+ *   The user entity to get the information for.
+ *
+ * @return string
+ *   The Auth0 information we have for the user.
  */
 function auth0_user_info_page($user) {
   drupal_page_is_cacheable(FALSE);
 
   if (!auth0_check_dependencies()) {
-    return drupal_goto();
+    drupal_goto();
   }
   if ($object = auth0_get_auth0_object_from_drupal_uid($user->uid)) {
     if (defined('JSON_PRETTY_PRINT')) {
@@ -113,41 +112,24 @@ function auth0_verify_email_page() {
   drupal_page_is_cacheable(FALSE);
 
   if (!auth0_enabled('login')) {
-    return drupal_goto();
+    drupal_goto();
   }
 
   $token = $_REQUEST['idToken'];
-  /**
-    * Validate the ID Token
-    */
-  $domain = variable_get('auth0_domain', '');
-  $client_id = variable_get('auth0_client_id', '');
-  $client_secret = variable_get('auth0_client_secret', '');
-  $secret_base64_encoded = variable_get('auth0_secret_base64_encoded', FALSE);
-  $jwt_signature_alg = variable_get('auth0_jwt_signature_alg', "HS256");
+  $settings = _auth0_get_settings();
+  $user = auth0_parse_jwt_token($token);
 
-  $auth0_domain = 'https://' . $domain . '/';
-  $auth0_settings = array();
-  $auth0_settings['authorized_iss'] = [$auth0_domain];
-  $auth0_settings['supported_algs'] = [$jwt_signature_alg];
-  $auth0_settings['valid_audiences'] = [$client_id];
-  $auth0_settings['client_secret'] = $client_secret;
-  $auth0_settings['secret_base64_encoded'] = $secret_base64_encoded;
-  $jwt_verifier = new JWTVerifier($auth0_settings);
-  try {
-    $user = $jwt_verifier->verifyAndDecode($token);
-  }
-  catch(\Exception $e) {
+  if ($user === FALSE) {
     drupal_set_message(t('There was a problem re-sending the email.'), 'error');
-    watchdog('Auth0',"Error validating the token while resending the email: ".$e->getMessage(), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    watchdog('Auth0', 'Error validating the token while resending the email', [], WATCHDOG_ERROR);
+    drupal_goto();
   }
 
   try {
-    $userId = $user->sub;
-    $url = "https://$domain/api/users/$userId/send_verification_email";
-    $headers = array('Authorization' => "Bearer $token");
-    $result = drupal_http_request($url, array('headers' => $headers, 'method' => 'POST'));
+    $user_id = $user->sub;
+    $url = 'https://' . $settings['domain'] . '/api/users/ ' . $user_id / '/send_verification_email';
+    $headers = ['Authorization' => 'Bearer ' . $token];
+    $result = drupal_http_request($url, ['headers' => $headers, 'method' => 'POST']);
 
     if ($result->code == 200) {
       drupal_set_message(t('A verification message with further instructions has been sent to your e-mail address.'));
@@ -160,7 +142,7 @@ function auth0_verify_email_page() {
     drupal_set_message(t('Sorry, we could not send a verification e-mail. Please try again later.'), 'error');
   }
 
-  return drupal_goto();
+  drupal_goto();
 }
 
 /**
@@ -173,37 +155,33 @@ function auth0_callback() {
   drupal_page_is_cacheable(FALSE);
 
   if (!auth0_enabled('login')) {
-    return drupal_goto();
+    drupal_goto();
   }
 
   /* Can these come in a post? */
   $query = drupal_get_query_parameters();
   if (isset($query['error']) && $query['error'] == 'login_required') {
-    $authorizeUrl = _auth0_generate_authorize_url(FALSE);
+    $authorize_url = _auth0_generate_authorize_url(FALSE);
 
     /* Have to deal with this destination parameter or drupal_goto completely ignores your request to go somewhere other than destination! */
     unset($_GET['destination']);
     drupal_static_reset('drupal_get_destination');
     drupal_get_destination();
-    return drupal_goto($authorizeUrl, array('external' => TRUE, 'absolute' => TRUE));
+    return drupal_goto($authorize_url, ['external' => TRUE, 'absolute' => TRUE]);
   }
-
-  $domain = variable_get('auth0_domain', '');
-  $client_id = variable_get('auth0_client_id', '');
-  $client_secret = variable_get('auth0_client_secret', '');
-  $secret_base64_encoded = variable_get('auth0_secret_base64_encoded', FALSE);
-  $jwt_signature_alg = variable_get('auth0_jwt_signature_alg', "HS256");
-  $auth0 = new Auth0(array(
-      'domain' => $domain,
-      'client_id' => $client_id,
-      'client_secret' => $client_secret,
-      'redirect_uri' => url('auth0/callback', array('absolute' => TRUE)),
-      'store' => NULL, // Set to null so that the store is set to SessionStore.
-      'persist_id_token' => FALSE,
-      'persist_user' => FALSE,
-      'persist_access_token' => FALSE,
-      'persist_refresh_token' => FALSE    
-    ));
+  $settings = _auth0_get_settings();
+  $auth0 = new Auth0([
+    'domain' => $settings['domain'],
+    'client_id' => $settings['client_id'],
+    'client_secret' => $settings['client_secret'],
+    'redirect_uri' => url('auth0/callback', ['absolute' => TRUE]),
+    // Set to null so that the store is set to SessionStore.
+    'store' => NULL,
+    'persist_id_token' => FALSE,
+    'persist_user' => FALSE,
+    'persist_access_token' => FALSE,
+    'persist_refresh_token' => FALSE
+  ]);
 
   $user_info = NULL;
 
@@ -213,8 +191,8 @@ function auth0_callback() {
   }
   catch (Exception $e) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0', 'Error occurred while getting the Auth0 user info or ID token: @exception', array('@exception' => print_r($e, TRUE)), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    watchdog('Auth0', 'Error occurred while getting the Auth0 user info or ID token: @exception', ['@exception' => print_r($e, TRUE)], WATCHDOG_ERROR);
+    drupal_goto();
   }
 
   // var_dump($auth0); die;
@@ -223,63 +201,47 @@ function auth0_callback() {
   $query = drupal_get_query_parameters();
   if (!isset($query['state']) || !drupal_valid_token($query['state'], 'auth0_state')) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0',"Could not validate the state", WATCHDOG_ERROR);
-    return drupal_goto(); 
+    watchdog('Auth0', 'Could not validate the state', [], WATCHDOG_ERROR);
+    drupal_goto();
   }
 
-  /**
-    * Validate the ID Token
-    */
-  $auth0_domain = 'https://' . $domain . '/';
-  $auth0_settings = array();
-  $auth0_settings['authorized_iss'] = [$auth0_domain];
-  $auth0_settings['supported_algs'] = [$jwt_signature_alg];
-  $auth0_settings['valid_audiences'] = [$client_id];
-  $auth0_settings['client_secret'] = $client_secret;
-  $auth0_settings['secret_base64_encoded'] = $secret_base64_encoded;
-  $jwt_verifier = new JWTVerifier($auth0_settings);
-  try {
-    $user = $jwt_verifier->verifyAndDecode($id_token);
-  }
-  catch(\Exception $e) {
+  $user = auth0_parse_jwt_token($id_token);
+  if ($user === FALSE) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0',"Error validating the token: ".$e->getMessage(), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    drupal_goto();
   }
-
 
   $success = FALSE;
 
-  if (isset($user_info['sub']) && !isset($user_info['user_id'])) $user_info['user_id'] = $user_info['sub'];
+  if (isset($user_info['sub']) && !isset($user_info['user_id'])) {
+    $user_info['user_id'] = $user_info['sub'];
+  }
+
   if ($user_info) {
     $success = auth0_login_auth0_user($user_info, $id_token);
   }
   if (!$success) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0',"user_info missing", WATCHDOG_ERROR);
+    watchdog('Auth0', 'user_info missing', [], WATCHDOG_ERROR);
   }
 
-  return drupal_goto();
+  drupal_goto();
 }
 
 /**
- * Display a message and cancel login if the user does not have a verified email.
+ * Display a message and cancel login if the user doesn't have a verified email.
  */
-function auth0_fail_with_verify_email($idToken) {
-  $url = url('auth0/verify_email', array());
-  $formText = "<form style='display:none' name='auth0VerifyEmail' action=@url method='post'><input type='hidden' value=@token name='idToken'/></form>";
-  $linkText = "<a href='javascript:null' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
+function auth0_fail_with_verify_email($id_token) {
+  $url = url('auth0/verify_email', []);
+  $form = '<form style="display:none" name="auth0VerifyEmail" action="' . $url . '" method="post"><input type="hidden" value="' . $id_token . '" name="idToken"/></form>';
+  $link = "<a href='javascript:null' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
 
-  $message = t($formText."Please verify your email and log in again. Click $linkText to resend verification email.",
-    array(
-      '@url' => $url,
-      '@token' => $idToken
-    )
-  );
+  $message = $form;
+  $message .= t("Please verify your email and log in again.");
+  $message .= t('Click !link to resend verification email.', ['!link' => $link]);
 
   drupal_set_message($message, 'warning');
-
-  return drupal_goto();
+  drupal_goto();
 }
 
 /**
@@ -304,7 +266,7 @@ function auth0_login_auth0_user($user_info, $id_token) {
     return auth0_fail_with_verify_email($id_token);
   }
 
-  // See if there is a user in the auth0_user table with the user info client id
+  // See if there is a user in auth0_user table with the user info client id.
   function_exists('dd') && dd($user_info['user_id'], 'looking up drupal user by auth0 user_id');
   $uid = auth0_find_auth0_user($user_info['user_id']);
 
@@ -314,7 +276,7 @@ function auth0_login_auth0_user($user_info, $id_token) {
     // The user exists. Update the auth0_user with the new userInfo object.
     auth0_update_auth0_object($user_info);
 
-    // Update field and role mappings
+    // Update field and role mappings.
     auth0_update_fields_and_roles($user_info, $uid);
 
     // Log in the user.
@@ -325,51 +287,59 @@ function auth0_login_auth0_user($user_info, $id_token) {
 
     // If the user doesn't exist we need to either create a new one, or assign
     // him to an existing one.
-    $isDatabaseUser = FALSE;
+    $is_database_user = FALSE;
 
-    /* Make sure we have the identities array, if not, fetch it from the user endpoint */
-    $hasIdentities = (is_object($user_info) && $user_info->has('identities')) ||
+    // Check if we have the identities array. If not, fetch from user endpoint.
+    $has_identities = (is_object($user_info) && $user_info->has('identities')) ||
       (is_array($user_info) && array_key_exists('identities', $user_info));
-    if (!$hasIdentities) {
-      $mgmtClient = new Management($id_token, variable_get('auth0_domain', ''));
 
-      $user = $mgmtClient->users->get($user_info['user_id']);
+    if (!$has_identities) {
+      $settings = _auth0_get_settings();
+      $mgmt_auth = new Authentication($settings['domain'], $settings['client_id'], $settings['client_secret']);
+      $mgmt_token = $mgmt_auth->oauth_token([
+        'grant_type' => 'client_credentials',
+        'audience' => 'https://' . $settings['domain'] . '/api/v2/',
+      ]);
+      $mgmt_client = new Management($mgmt_token['access_token'], $settings['domain']);
+      $user = $mgmt_client->users->get($user_info['user_id']);
       $user_info['identities'] = $user['identities'];
     }
 
     foreach ($user_info['identities'] as $identity) {
       if ($identity['provider'] == "auth0") {
-        $isDatabaseUser = TRUE;
+        $is_database_user = TRUE;
       }
     }
-    function_exists('dd') && dd($isDatabaseUser, 'isDatabaseUser');
-    $joinUser = FALSE;
+    function_exists('dd') && dd(is_database_user, 'isDatabaseUser');
+    $join_user = FALSE;
 
     if (variable_get('auth0_join_user_by_mail_enabled', FALSE)) {
       function_exists('dd') && dd($user_info['email'], 'join user by mail is enabled, looking up user by email');
-      // If the user has a verified email or is a database user try to see if there is
-      // a user to join with. The isDatabase is because we don't want to allow database
-      // user creation if there is an existing one with no verified email.
-      if (!empty($user_info['email_verified']) || $isDatabaseUser) {
-        $joinUser = user_load_by_mail($user_info['email']);
+      // If the user has a verified email or is a database user try to see if
+      // there is a user to join with. The $is_database_user is because we don't
+      // want to allow database user creation if there is an existing one with
+      // no verified email.
+      if (!empty($user_info['email_verified']) || $is_database_user) {
+        $join_user = user_load_by_mail($user_info['email']);
       }
-    } else {
+    }
+    else {
       function_exists('dd') && dd($user_info['email'], 'join user by mail is not enabled, skipping lookup user by email');
     }
 
-    if ($joinUser) {
-      function_exists('dd') && dd($joinUser->uid, 'drupal user found by email with uid');
+    if ($join_user) {
+      function_exists('dd') && dd($join_user->uid, 'drupal user found by email with uid');
       // If we are here, we have a potential join user.
-      // Don't allow creation or assignation of user if the email is not verified, that would
-      // be hijacking.
+      // Don't allow creation or assignation of user if the email is not
+      // verified, that would be hijacking.
       if (empty($user_info['email_verified'])) {
         return auth0_fail_with_verify_email($id_token);
       }
-      $uid = $joinUser->uid;
+      $uid = $join_user->uid;
     }
     else {
       // If we are here, we need to create the user.
-      // Check drupal settings to see if new users are allowed to register.
+      // Check Drupal settings to see if new users are allowed to register.
       if (variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_ADMINISTRATORS_ONLY) {
         return drupal_set_message(t('Only site administrators can create new user accounts.'), 'error');
       }
@@ -382,7 +352,7 @@ function auth0_login_auth0_user($user_info, $id_token) {
     function_exists('dd') && dd($uid, 'inserting auth0 user with uid');
     auth0_insert_auth0_user($user_info, $uid);
 
-    // Update field and role mappings
+    // Update field and role mappings.
     auth0_update_fields_and_roles($user_info, $uid);
 
       // Log in the user.
@@ -393,15 +363,14 @@ function auth0_login_auth0_user($user_info, $id_token) {
 }
 
 /**
- * Update the field mappings and role mappings for a user based on auth0 user data
+ * Update the field and role mappings for a user based on auth0 user data.
  */
-function auth0_update_fields_and_roles($user_info, $uid)
-{
+function auth0_update_fields_and_roles($user_info, $uid) {
   function_exists('dd') && dd($user_info, 'auth0_update_fields_and_roles called');
 
   $the_user = user_load($uid);
   function_exists('dd') && dd($the_user, 'the_user before updates');
-  $edit = array();
+  $edit = [];
 
   auth0_update_fields($user_info, $uid, $the_user, $edit);
   auth0_update_roles($user_info, $uid, $the_user, $edit);
@@ -414,65 +383,65 @@ function auth0_update_fields_and_roles($user_info, $uid)
 }
 
 /*
- * Update the $user profile attributes of a user based on the auth0 field mappings
+ * Update $user profile attributes of a user based on the auth0 field mappings.
  */
-function auth0_update_fields($user_info, $uid, $the_user, &$edit)
-{
+function auth0_update_fields($user_info, $uid, $the_user, &$edit) {
   $auth0_claim_mapping = variable_get('auth0_claim_mapping');
   function_exists('dd') && dd($auth0_claim_mapping, 'auth0_claim_mapping');
 
   if (isset($auth0_claim_mapping) && !empty($auth0_claim_mapping)) {
     // For each claim mapping, lookup the value, otherwise set to blank
-    $mappings = auth0_pipeListToArray($auth0_claim_mapping);
+    $mappings = _auth0_pipe_list_to_array($auth0_claim_mapping);
     function_exists('dd') && dd($mappings, 'auth0_claim_mapping as array');
 
     // Remove mappings handled automatically by the module
-    $skip_mappings = array('uid', 'name', 'mail', 'init', 'is_new', 'status', 'pass');
+    $skip_mappings = ['uid', 'name', 'mail', 'init', 'is_new', 'status', 'pass'];
     foreach ($mappings as $mapping) {
       function_exists('dd') && dd($mapping, 'mapping');
 
       $key = $mapping[1];
       if (in_array($key, $skip_mappings)) {
         function_exists('dd') && dd($mapping, 'skipping mapping handled already by auth0 module');
-      } else {
+      }
+      else {
         $value = isset($user_info[$mapping[0]]) ? $user_info[$mapping[0]] : '';
         //array()[LANGUAGE_NONE][0]['value'] = 'foo';
-        $edit[$key] = array(
-          LANGUAGE_NONE => array(
-            0 => array(
+        $edit[$key] = [
+          LANGUAGE_NONE => [
+            0 => [
               'value' => $value
-            )
-          )
-        );
+            ]
+          ]
+        ];
       }
     }
   }
 }
 
 /**
- * Updates the $user->roles of a user based on the auth0 role mappings
+ * Updates the $user->roles of a user based on the auth0 role mappings.
  */
-function auth0_update_roles($user_info, $uid, $the_user, &$edit)
-{
+function auth0_update_roles($user_info, $uid, $the_user, &$edit) {
   $auth0_claim_to_use_for_role = variable_get('auth0_claim_to_use_for_role');
   if (isset($auth0_claim_to_use_for_role) && !empty($auth0_claim_to_use_for_role)) {
     $claim_value = isset($user_info[$auth0_claim_to_use_for_role]) ? $user_info[$auth0_claim_to_use_for_role] : '';
     function_exists('dd') && dd($claim_value, 'claim_value');
 
-    $claim_values = array();
+    $claim_values = [];
     if (is_array($claim_value)) {
       $claim_values = $claim_value;
-    } else {
+    }
+    else {
       $claim_values[] = $claim_value;
     }
     function_exists('dd') && dd($claim_values, 'claim_values');
 
     $auth0_role_mapping = variable_get('auth0_role_mapping');
-    $mappings = auth0_pipeListToArray($auth0_role_mapping);
+    $mappings = _auth0_pipe_list_to_array($auth0_role_mapping);
     function_exists('dd') && dd($mappings, 'auth0_role_mapping as array');
 
-    $roles_granted = array();
-    $roles_managed_by_mapping = array();
+    $roles_granted = [];
+    $roles_managed_by_mapping = [];
     foreach ($mappings as $mapping) {
       function_exists('dd') && dd($mapping, 'mapping');
       $roles_managed_by_mapping[] = $mapping[1];
@@ -497,7 +466,7 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
 
     $tmp = array_diff($new_user_roles, $user_roles);
     if (!empty($tmp)) {
-      $new_user_roles_map = array();
+      $new_user_roles_map = [];
       foreach ($new_user_roles as $new_role) {
         $role = user_role_load_by_name($new_role);
         $new_user_roles_map[$role->rid] = $role->name;
@@ -510,29 +479,37 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
 }
 
 /**
- * Get the piped list as an array.
+ * Private helper function: convert pipe delimited list to an array.
+ *
+ * @param string $mapping_list_txt
+ *   The string to parse.
+ * @param bool $make_item0_lowercase
+ *   Optional - Convert item 0 to lower case. Default = FALSE.
+ *
+ * @return array
+ *   Resulting array
  */
-function auth0_pipeListToArray($mapping_list_txt, $make_item0_lowercase = FALSE) {
-    $result_array = array();
-    $mappings = preg_split('/[\n\r]+/', $mapping_list_txt);
-    foreach ($mappings as $line) {
-        if (count($mapping = explode('|', trim($line))) == 2) {
-            $item_0 = ($make_item0_lowercase) ? drupal_strtolower(trim($mapping[0])) : trim($mapping[0]);
-            $result_array[] = array($item_0, trim($mapping[1]));
-        }
-    }
-    return $result_array;
+function _auth0_pipe_list_to_array($mapping_list_txt, $make_item0_lowercase = FALSE) {
+  $result_array = [];
+  $mappings = preg_split('/[\n\r]+/', $mapping_list_txt);
+  foreach ($mappings as $line) {
+      if (count($mapping = explode('|', trim($line))) == 2) {
+          $item_0 = ($make_item0_lowercase) ? drupal_strtolower(trim($mapping[0])) : trim($mapping[0]);
+          $result_array[] = [$item_0, trim($mapping[1])];
+      }
+  }
+  return $result_array;
 }
 
 /**
  * Authenticate the given user.
  *
- * We use our own login form because user_external_login loads the login form which
- * we are modifying.
+ * We use our own login form because user_external_login loads the login form
+ * which we are modifying.
  */
 function auth0_authenticate_user($uid) {
   $form_state['uid'] = $uid;
-  user_login_submit(array(), $form_state);
+  user_login_submit([], $form_state);
   return TRUE;
 }
 
@@ -551,14 +528,20 @@ function auth0_user($op, &$edit, &$account, $category = NULL) {
  * Removes the user from the auth0_user table.
  */
 function auth0_user_delete($account) {
-  db_delete('auth0_user')->condition('drupal_id', $account->uid, '=')->execute();
+  db_delete('auth0_user')
+    ->condition('drupal_id', $account->uid, '=')
+    ->execute();
 }
 
 /**
  * Return the uid of the user with the given Auth0 id.
  */
 function auth0_find_auth0_user($id) {
-  $rs = db_select('auth0_user', 'a')->fields('a', array('drupal_id'))->condition('auth0_id', $id, '=')->execute()->fetchAssoc();
+  $rs = db_select('auth0_user', 'a')
+    ->fields('a', ['drupal_id'])
+    ->condition('auth0_id', $id, '=')
+    ->execute()
+    ->fetchAssoc();
   return empty($rs) ? FALSE : $rs['drupal_id'];
 }
 
@@ -566,7 +549,12 @@ function auth0_find_auth0_user($id) {
  * Return the uid of the user with the given Auth0 id.
  */
 function auth0_get_auth0_object_from_drupal_uid($uid) {
-  $rs = db_select('auth0_user', 'a')->fields('a')->condition('drupal_id', $uid, '=')->execute()->fetch();
+  $rs = db_select('auth0_user', 'a')
+    ->fields('a')
+    ->condition('drupal_id', $uid, '=')
+    ->execute()
+    ->fetch();
+
   if (!empty($rs)) {
     $rs = drupal_unpack($rs, 'auth0_object');
     unset($rs->auth0_object);
@@ -580,20 +568,22 @@ function auth0_get_auth0_object_from_drupal_uid($uid) {
  * Save changes to the local cache of an Auth0 user object.
  */
 function auth0_update_auth0_object($user_info) {
-  db_update('auth0_user')->fields(array(
+  db_update('auth0_user')->fields([
       'auth0_object' => serialize($user_info),
-    ))->condition('auth0_id', $user_info['user_id'], '=')->execute();
+    ])
+    ->condition('auth0_id', $user_info['user_id'], '=')
+    ->execute();
 }
 
 /**
  * Create a local cached Auth0 user object.
  */
 function auth0_insert_auth0_user($user_info, $uid) {
-  $auth0_user = array(
+  $auth0_user = [
     'auth0_id' => $user_info['user_id'],
     'drupal_id' => $uid,
     'auth0_object' => serialize($user_info),
-  );
+  ];
 
   drupal_write_record('auth0_user', $auth0_user);
 }
@@ -622,11 +612,13 @@ function auth0_create_user_from_auth0($user_info) {
   $user->name = $username;
   $user->is_new = TRUE;
 
-  // If auto_register from auth0 is enabled, they are active immediately, otherwise check the site registration settings
+  // If auto_register from auth0 is enabled, they are active immediately,
+  // otherwise check the site registration settings
   $auth0_auto_register = variable_get('auth0_auto_register', FALSE);
   if ($auth0_auto_register) {
     $user->status = TRUE;
-  } else {
+  }
+  else {
     $user->status = variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_VISITORS;
   }
   $user->pass = user_password();
@@ -634,7 +626,7 @@ function auth0_create_user_from_auth0($user_info) {
   $new_user = user_save($user);
 
   if ($user) {
-    watchdog('Auth0', 'Account created for %name', array('%name' => $user->name), WATCHDOG_NOTICE, l(t('edit'), 'user/' . $user->uid . '/edit'));
+    watchdog('Auth0', 'Account created for %name', ['%name' => $user->name], WATCHDOG_NOTICE, l(t('edit'), 'user/' . $user->uid . '/edit'));
   }
 
   // Notify the user if they must have approval.
@@ -651,12 +643,14 @@ function auth0_create_user_from_auth0($user_info) {
  * Define the template to use for the /user action.
  */
 function auth0_theme() {
-  return array(
-    'auth0_lock' => array(
-      'variables' => array('mode' => 'signin'),
+  return [
+    'auth0_lock' => [
+      'variables' => [
+        'mode' => 'signin',
+      ],
       'template' => 'auth0-lock',
-    ),
-  );
+    ],
+  ];
 }
 
 /**
@@ -667,35 +661,34 @@ function auth0_basic_settings_form($form, &$form_state) {
     // Set message.
     auth0_missing_dependencies_message();
   }
-
-  $form['auth0_domain'] = array(
+  $form['auth0_domain'] = [
     '#type' => 'textfield',
     '#title' => t('Domain'),
     '#default_value' => variable_get('auth0_domain', ''),
     '#description' => t('Your Auth0 domain, you can see it in the auth0 dashboard.'),
     '#required' => TRUE,
-  );
-  $form['auth0_client_id'] = array(
+  ];
+  $form['auth0_client_id'] = [
     '#type' => 'textfield',
     '#title' => t('Client id'),
     '#default_value' => variable_get('auth0_client_id', ''),
     '#description' => t('Application id, copy from the auth0 dashboard.'),
     '#required' => TRUE,
-  );
-  $form['auth0_client_secret'] = array(
+  ];
+  $form['auth0_client_secret'] = [
     '#type' => 'textfield',
     '#title' => t('Client secret'),
     '#default_value' => variable_get('auth0_client_secret', ''),
     '#description' => t('Application secret, copy from the auth0 dashboard.'),
     '#required' => TRUE,
-  );
-  $form['auth0_secret_base64_encoded'] = array(
+  ];
+  $form['auth0_secret_base64_encoded'] = [
     '#type' => 'checkbox',
     '#title' => t('Client Secret is Base64 Encoded'),
     '#default_value' => variable_get('auth0_secret_base64_encoded', FALSE),
     '#description' => t('This is stated below the client secret in your Auth0 Dashboard for the client.  If your client was created after September 2016, this should be false.')
-  );
-  $form['auth0_jwt_signature_alg'] = array(
+  ];
+  $form['auth0_jwt_signature_alg'] = [
     '#type' => 'select',
     '#title' => t('JWT Signature Algorithm'),
     '#options' => [
@@ -703,9 +696,9 @@ function auth0_basic_settings_form($form, &$form_state) {
       'RS256' => t('RS256'),
     ],
     '#default_value' => variable_get('auth0_jwt_signature_alg', 'HS256'),
-    '#description' => t('Your JWT Signing Algorithm for the ID token.  RS256 is recommended, but must be set in the advanced settings under oauth for this client.'),
+    '#description' => t('Your JWT Signing Algorithm for the ID token.  RS256 is recommended.'),
     '#required' => TRUE,
-  );
+  ];
 
 
   return system_settings_form($form);
@@ -720,91 +713,80 @@ function auth0_advanced_settings_form($form, &$form_state) {
     auth0_missing_dependencies_message();
   }
 
-  $form['auth0_replace_forms'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Replace default Drupal login, registration, and password reset forms'),
-    '#default_value' => variable_get('auth0_replace_forms', TRUE),
-    '#description' => t('Uncheck this box to disable replacement of the default Drupal login, registration, and password reset forms with the Auth0 Lock login widget. This allows maintaining the option to login with a Drupal username and password.'),
-  );
-
-  // Text field for the e-mail subject.
-  $form['auth0_form_title'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Form title'),
-    '#default_value' => variable_get('auth0_form_title', 'Sign In'),
-    '#description' => t('This is the title for the login widget.'),
-  );
-
-  $form['auth0_allow_signup'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Allow user signup'),
-    '#default_value' => variable_get('auth0_allow_signup', TRUE),
-    '#description' => t('If you have database connection you can allow users to signup using the Auth0 widget.'),
-  );
-
-
-  $form['auth0_widget_cdn'] = array(
+  $form['auth0_widget_cdn'] = [
     '#type' => 'textfield',
     '#title' => t('Widget CDN'),
     '#default_value' => variable_get('auth0_widget_cdn', AUTH0_WIDGET_CDN),
     '#description' => t('Point this to the latest widget available in the CDN.'),
-  );
-
-  $form['auth0_requires_email'] = array(
+  ];
+  $form['auth0_configuration_base_url'] = [
+    '#type' => 'textfield',
+    '#title' => t('Configuration Base URL'),
+    '#default_value' => variable_get('auth0_configuration_base_url', ''),
+    '#description' => t('The CDN URL varies by region, for regions outside of the US, use https://cdn.{region}.auth0.com (for example, use eu for Europe, au for Australia).'),
+    '#required' => TRUE,
+  ];
+  $form['auth0_replace_forms'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Replace default Drupal login, registration, and password reset forms'),
+    '#default_value' => variable_get('auth0_replace_forms', TRUE),
+    '#description' => t('Uncheck this box to disable replacement of the default Drupal login, registration, and password reset forms with the Auth0 Lock login widget. This allows maintaining the option to login with a Drupal username and password.'),
+  ];
+  $form['auth0_allow_signup'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Allow user signup'),
+    '#default_value' => variable_get('auth0_allow_signup', TRUE),
+    '#description' => t('If you have database connection you can allow users to signup using the Auth0 widget.'),
+  ];
+  $form['auth0_requires_email'] = [
     '#type' => 'checkbox',
     '#title' => t('Require an e-mail account'),
     '#default_value' => variable_get('auth0_requires_email', TRUE),
     '#description' => t('Require the user to have an e-mail address to login.'),
-  );
-
-  $form['auth0_join_user_by_mail_enabled'] = array(
+  ];
+  $form['auth0_join_user_by_mail_enabled'] = [
     '#type' => 'checkbox',
     '#title' => t('Link auth0 logins to drupal users by email address'),
     '#default_value' => variable_get('auth0_join_user_by_mail_enabled', FALSE),
-    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email 
-address of the Auth0 user to search for a drupal user with the same email address and setup a link to that 
+    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email
+address of the Auth0 user to search for a drupal user with the same email address and setup a link to that
 Drupal user account.
 <br/>If not enabled, then a new Drupal user will be created even if a Drupal user with the same email address already exists.
 '),
-  );
-
-  $form['auth0_sso'] = array(
+  ];
+  $form['auth0_sso'] = [
     '#type' => 'checkbox',
     '#title' => t('SSO enabled'),
     '#default_value' => variable_get('auth0_sso', FALSE),
-    '#description' => t('Enable Auth0 <a href="@url">Single Sign On</a> for this site.', array('@url' => 'https://auth0.com/docs/sso/single-sign-on')),
-  );
-
-  $form['auth0_login_css'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Login widget CSS'),
-    '#default_value' => variable_get('auth0_login_css', AUTH_LOGIN_CSS),
-    '#description' => t('This CSS controls the widget look and feel.'),
-  );
-// Add option to have the logout url at the application level or account level
-  $form['auth0_returnTo_app'] = array(
+    '#description' => t('Enable Auth0 <a href="@url">Single Sign On</a> for this site.', ['@url' => 'https://auth0.com/docs/sso/single-sign-on']),
+  ];
+  // Add option to have the logout url at application level or account level.
+  $form['auth0_returnTo_app'] = [
     '#type' => 'checkbox',
     '#title' => t('Use returnTo URLs at the App Level'),
     '#default_value' => variable_get('auth0_returnTo_app', FALSE),
-    '#description' => t('Check this box to use the <a href="@url">returnTo URLs</a> at the Account Level', array('@url' => 'https://auth0.com/docs/logout#redirecting-users-after-logout')),
-  );
-
-  $form['auth0_lock_extra_settings'] = array(
+    '#description' => t('Check this box to use the <a href="@url">returnTo URLs</a> at the Account Level', ['@url' => 'https://auth0.com/docs/logout#redirecting-users-after-logout']),
+  ];
+  $form['auth0_log_in_link_text'] = [
+    '#type' => 'textfield',
+    '#title' => t('Log In Link Text'),
+    '#default_value' => variable_get('auth0_log_in_link_text', 'Log In'),
+    '#description' => t('Text used for the link displayed in the Lock Widget.'),
+  ];
+  $form['auth0_lock_extra_settings'] = [
       '#type' => 'textarea',
       '#title' => t('Lock extra setting'),
       '#default_value' => variable_get('auth0_lock_extra_settings'),
       '#description' => t('This should be a valid JSON file. This entire object will be passed to the lock options parameter.')
-  );
-
-  $form['auth0_auto_register'] = array(
+  ];
+  $form['auth0_auto_register'] = [
     '#type' => 'checkbox',
     '#title' => t('Auto Register Auth0 users (ignore site registration settings)'),
     '#default_value' => variable_get('auth0_auto_register', FALSE),
     '#description' => t('Enable this option if you want new auth0 users to automatically be activated within Drupal regardless of the global site visitor registration settings (e.g. requiring admin approval).'),
-  );
-
-  // Enhancement to support mapping claims to user attributes and to roles
-  $form['auth0_claim_mapping'] = array(
+  ];
+  // Enhancement to support mapping claims to user attributes and to roles.
+  $form['auth0_claim_mapping'] = [
     '#type' => 'textarea',
     '#title' => t('Mapping of Claims to Profile Fields (one per line):'),
     '#cols' => 50,
@@ -818,16 +800,14 @@ Drupal user account.
 <br/>NOTE: the following Drupal fields are handled automatically and will be ignored if specified above:
 <br/>    uid, name, mail, init, is_new, status, pass
 '),
-  );
-
-  $form['auth0_claim_to_use_for_role'] = array(
+  ];
+  $form['auth0_claim_to_use_for_role'] = [
     '#type' => 'textfield',
     '#title' => t('Claim for Role Mapping:'),
     '#default_value' => variable_get('auth0_claim_to_use_for_role'),
     '#description' => t('Name of the claim to use to map to Drupal roles, e.g. roles.  If the claim contains a list of values, all values will be used in the mappings below.')
-  );
-
-  $form['auth0_role_mapping'] = array(
+  ];
+  $form['auth0_role_mapping'] = [
     '#type' => 'textarea',
     '#title' => t('Mapping of Claim Role Values to Drupal Roles (one per line)'),
     '#default_value' => variable_get('auth0_role_mapping'),
@@ -836,10 +816,10 @@ Drupal user account.
 <br/>admin|administrator
 <br/>poweruser|power users
 <br/>
-<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.  
+<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.
 Drupal roles not listed above will not be changed by this module.
 ')
-  );
+  ];
 
   return system_settings_form($form);
 }
@@ -850,18 +830,20 @@ Drupal roles not listed above will not be changed by this module.
  * Logs the user out of Auth0 if SSO is in use.
  */
 function auth0_user_logout($account) {
+  $settings = _auth0_get_settings();
+
   // If Single Sign On is enabled then log the user out from Auth0.
-  if (variable_get("auth0_sso", FALSE)) {
+  if ($settings['sso_enabled']) {
     session_destroy();
+    $query = [
+      'returnTo' => url('<front>', ['absolute' => TRUE]),
+    ];
 
-    $domain = check_plain(variable_get("auth0_domain", ''));
-
-    if(variable_get("auth0_returnTo_app",FALSE)) {
-      $client = check_plain(variable_get("auth0_client_id", ''));
-      drupal_goto("https://$domain/v2/logout?returnTo=" . urlencode(url('<front>', array('absolute' => TRUE))) . "&client_id=$client");
-    } else {
-      drupal_goto("https://$domain/v2/logout?returnTo=" . urlencode(url('<front>', array('absolute' => TRUE))));
+    if (variable_get("auth0_returnTo_app", FALSE)) {
+      $query['client_id'] = $settings['client_id'];
     }
+    $url = url('https://' . $settings['domain'] . '/v2/logout', ['query' => $query]);
+    drupal_goto($url);
   }
 }
 
@@ -905,7 +887,8 @@ function auth0_form_alter(&$form, $form_state, $form_id) {
 function auth0_form_user_profile_form_alter(&$form, $form_state) {
   $user = $form_state['user'];
   if ($object = auth0_get_auth0_object_from_drupal_uid($user->uid)) {
-    // If the user has an Auth0 profile then we simply disable the password/email fields.
+    // If the user has an Auth0 profile then we simply disable the
+    // password/email fields.
 
     // If this account was created without an email address hide the field,
     // otherwise show it but disable it.
@@ -919,27 +902,31 @@ function auth0_form_user_profile_form_alter(&$form, $form_state) {
     // Remove the password field.
     $form['account']['pass']['#access'] = FALSE;
 
-    // If there is no way to edit the mail/pass then we don't need the current pass f
+    // If there is no way to edit the mail/pass then we don't need the
+    // current pass field.
     if (isset($form['account']['current_pass'])) {
       $form['account']['current_pass']['#access'] = FALSE;
     }
 
-    // @TODO: Reenable the password/email editing ability if the connection providor is Auth0
-    // This will require using the API to update the info in Auth0
+    // @TODO: Enable the password/email editing ability if the connection
+    // provider is Auth0. Will require using the API to update info in Auth0.
   }
 }
 
 function _auth0_generate_authorize_url($prompt) {
-  $query = array(
-    'redirect_uri' => url('auth0/callback', array('absolute' => TRUE, 'query' => drupal_get_destination())),
-    'connection' => null,
+  $settings = _auth0_get_settings();
+  $query = [
+    'redirect_uri' => url('auth0/callback', ['absolute' => TRUE, 'query' => drupal_get_destination()]),
+    'connection' => NULL,
     'response_type' => 'code'
-  );
+  ];
 
-  /* Overwrite values if needed */
-  if (is_array($prompt)) $query = array_merge($query, $prompt);
+  // Overwrite values if needed.
+  if (is_array($prompt)) {
+    $query = array_merge($query, $prompt);
+  }
 
-  /* Set the state, if not passed in */
+  // Set the state, if not passed in.
   if (!isset($_SESSION['auth0_session_started'])) {
     $_SESSION['auth0_session_started'] = TRUE;
     drupal_session_start();
@@ -959,9 +946,7 @@ function _auth0_generate_authorize_url($prompt) {
   $additional_params['scope'] = 'openid profile email';
   $additional_params = array_merge($additional_params, $query);
 
-  $domain = check_plain(variable_get("auth0_domain", ''));
-  $client_id = check_plain(variable_get("auth0_client_id", ''));
-  $auth0Api = new Authentication($domain, $client_id);
+  $auth0Api = new Authentication($settings['domain'], $settings['client_id']);
   return $auth0Api->get_authorize_link($response_type, $redirect_uri, $connection, $state, $additional_params);
 }
 
@@ -975,97 +960,11 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
   }
 
   // Add an Auth0 Lock widget.
-  $form['auth0'] = array(
+  $form['auth0'] = [
     '#type' => 'markup',
-    '#markup' => theme('auth0_lock', array('mode' => $mode))
-  );
+    '#markup' => theme('auth0_lock', ['mode' => $mode])
+  ];
 }
-
-/**
- * Preprocess the login widget.
- */
-function template_preprocess_auth0_lock(&$vars) {
-  $vars['sso_enabled'] = (boolean)variable_get("auth0_sso", FALSE);
-  $vars['domain'] = check_plain(variable_get("auth0_domain", ''));
-  $vars['client_id'] = check_plain(variable_get("auth0_client_id", ''));
-  $vars['lock_extra_settings'] = json_decode(variable_get("auth0_lock_extra_settings", ''), true);
-
-  if ($vars['lock_extra_settings'] === null) {
-    $vars['lock_extra_settings'] = array();
-  }
-
-  $vars['params'] = $vars['lock_extra_settings'];
-
-  $vars['params']['container'] = isset($vars['params']['container']) ? $vars['params']['container'] : 'auth0-login-form';
-  $vars['params']['sso'] = isset($vars['sso_enabled']) ? $vars['sso_enabled'] : false;
-
-  $vars['params']['auth'] = isset($vars['params']['auth']) ? $vars['params']['auth'] : array();
-  $vars['params']['auth']['redirectUrl'] = isset($vars['params']['auth']['redirectUrl']) ? $vars['params']['auth']['redirectUrl'] : url('auth0/callback', array('absolute' => TRUE, 'query' => drupal_get_destination()));
-  $vars['params']['auth']['responseType'] = isset($vars['params']['auth']['responseType']) ? $vars['params']['auth']['responseType'] : 'code';
-
-  $vars['params']['auth']['params'] = isset($vars['params']['auth']['params']) ? $vars['params']['auth']['params'] : array();
-  $vars['params']['auth']['params']['scope'] = isset($vars['params']['auth']['params']['scope']) ? $vars['params']['auth']['params']['scope'] : 'openid email';
-  if (!isset($_SESSION['auth0_session_started'])) {
-    $_SESSION['auth0_session_started'] = TRUE;
-    drupal_session_start();
-  }
-  $vars['params']['auth']['params']['state'] = isset($vars['params']['auth']['params']['state']) ? $vars['params']['auth']['params']['state'] : drupal_get_token('auth0_state');
-
-  if (auth0_enabled('signup')) {
-    $vars['params']['allowSignUp'] = TRUE;
-  } else {
-    $vars['params']['allowSignUp'] = FALSE;
-  }
-  if (auth0_enabled('reset')) {
-    $vars['params']['disableResetAction'] = TRUE;
-  } else {
-    $vars['params']['disableResetAction'] = FALSE;
-  }
-
-  drupal_alter('auth0_params', $vars['params']);
-
-  // Generate a link to a login form to be displayed as a no-js fallback.
-  if (isset($vars['params']['auth']['params']['state'])) {
-    $query = array(
-      'redirect_uri' => $vars['params']['auth']['redirectUrl'],
-      'state' => $vars['params']['auth']['params']['state']
-    );
-  } else {
-    $query = array(
-      'redirect_uri' => $vars['params']['auth']['redirectUrl'],
-    );
-  }
-
-  // If auth0_sso is enabled, redirect to the hosted login page
-  if (variable_get("auth0_sso", FALSE)) {
-    $query['prompt'] = 'none';
-    $vars['login_link'] = l(t('Log in'), _auth0_generate_authorize_url($query));
-    // Bail early so the login link is all that is shown.
-    return;
-  } else {
-    $vars['login_link'] = l(t('Log in'), _auth0_generate_authorize_url($query));    
-  }
-
-  // Add the custom css if specified.
-  if ($css = variable_get("auth0_login_css", AUTH_LOGIN_CSS)) {
-    drupal_add_css($css, array('type' => 'inline'));
-  }
-
-  // Add the lock.js library from the specified CDN.
-  drupal_add_js(filter_var(variable_get('auth0_widget_cdn', AUTH0_WIDGET_CDN), FILTER_VALIDATE_URL), 'external');
-
-  // Add the auth0 js settings.
-  drupal_add_js(array(
-    'auth0' => array(
-      'client_id' => $vars['client_id'],
-      'domain' => $vars['domain'],
-      'options' => $vars['params']
-      )), 'setting');
-
-  // Add the Drupal behavior to initialize the widget.
-  drupal_add_js(drupal_get_path('module', 'auth0') . '/auth0.lock.js');
-}
-
 
 /**
  * Determine if Auth0 is enabled and can be used.
@@ -1117,13 +1016,7 @@ function auth0_check_dependencies() {
  * Set a message explaining how to install the dependencies.
  */
 function auth0_missing_dependencies_message() {
-  drupal_set_message(
-    t(
-        'Auth0 is not fully installed. See the module\'s INSTALL.txt file for installation instructions.',
-        array('!url' => 'https://www.drupal.org/project/composer_manager')
-    ),
-    'warning'
-  );
+  drupal_set_message(t("Auth0 is not fully installed. See the module's INSTALL.txt file for installation instructions."), 'warning');
 }
 
 /**
@@ -1132,10 +1025,10 @@ function auth0_missing_dependencies_message() {
  * Define a block with the Auth0 Lock widget.
  */
 function auth0_block_info() {
-  $blocks['auth0_lock'] = array(
+  $blocks['auth0_lock'] = [
     'info' => t('Auth0 Lock widget'),
-    'cache' => DRUPAL_CACHE_GLOBAL,
-  );
+    'cache' => DRUPAL_NO_CACHE,
+  ];
   return $blocks;
 }
 
@@ -1146,20 +1039,159 @@ function auth0_block_info() {
  */
 function auth0_block_view($delta = '') {
   global $user;
-
-  $block = array();
+  $block = [];
 
   switch ($delta) {
     case 'auth0_lock':
-      if (!$user->uid) {
-        $block['subject'] = '';
-        $block['content'] = array(
-          '#type' => 'markup',
-          '#markup' => theme('auth0_lock', array('mode' => 'signin')),
-        );
+      $block = ['subject' => '', 'content' => []];
+      if (user_is_anonymous()) {
+        $vars = _auth0_get_settings();
+        $vars['mode'] = 'signin';
+        $vars['params'] = _auth0_get_params();
+
+        // Generate a link to a login form to be displayed as a no-js fallback.
+        if (isset($vars['params']['auth']['params']['state'])) {
+          $query = [
+            'redirect_uri' => $vars['params']['auth']['redirectUrl'],
+            'state' => $vars['params']['auth']['params']['state']
+          ];
+        }
+        else {
+          $query = [
+            'redirect_uri' => $vars['params']['auth']['redirectUrl'],
+          ];
+        }
+        $vars['login_link'] = l(
+          $vars['log_in_link_text'],
+          _auth0_generate_authorize_url($query),
+          ['html' => TRUE]);
+
+        // Add the lock.js library from the specified CDN.
+        $block['content']['#attached']['js'][] = [
+          'type' => 'external',
+          'data' => $vars['lock_widget_url'],
+        ];
+        $block['content']['#attached']['js'][] = [
+          'type' => 'setting',
+          'data' => [
+            'auth0' => [
+              'client_id' => $vars['client_id'],
+              'domain' => $vars['domain'],
+              'options' => $vars['params'],
+            ],
+          ],
+        ];
+        $block['content']['#attached']['js'][] = [
+          'type' => 'file',
+          'data' => drupal_get_path('module', 'auth0') . '/auth0.lock.js',
+        ];
+        $block['content']['#markup'] = theme('auth0_lock', $vars);
       }
       break;
   }
 
   return $block;
+}
+/**
+ * Private helper function: Return the common settings for this module.
+ *
+ * @return array
+ *   List of common settings we need to use throughout.
+ */
+function _auth0_get_settings() {
+  $vars['sso_enabled'] = (boolean) variable_get('auth0_sso', FALSE);
+  $vars['domain'] = check_plain(variable_get('auth0_domain', ''));
+  $vars['client_id'] = check_plain(variable_get('auth0_client_id', ''));
+  $vars['client_secret'] = check_plain(variable_get('auth0_client_secret', ''));
+  $vars['secret_base64_encoded'] = (boolean) variable_get('auth0_secret_base64_encoded', FALSE);
+  $vars['jwt_signature_alg'] = variable_get('auth0_jwt_signature_alg', 'HS256');
+  $vars['lock_widget_url'] = filter_var(variable_get('auth0_widget_cdn', AUTH0_WIDGET_CDN), FILTER_VALIDATE_URL);
+  $vars['log_in_link_text'] = variable_get('auth0_log_in_link_text', 'Log In');
+  $vars['lock_extra_settings'] = json_decode(variable_get('auth0_lock_extra_settings', '{}'), TRUE);
+  $vars['lock_configuration_base_url'] = filter_var(variable_get('auth0_configuration_base_url',  'https://cdn.auth0.com'), FILTER_VALIDATE_URL);
+  $vars['lock_css'] = variable_get('auth0_login_css',  '');
+  return $vars;
+}
+
+/**
+ * Get the parameters for the lock screen.
+ *
+ * @return array
+ *   Associative array of the various settings we need.
+ *
+ */
+function _auth0_get_params() {
+  $settings = _auth0_get_settings();
+  $params = $settings['lock_extra_settings'];
+  $params['configurationBaseUrl'] = $settings['lock_configuration_base_url'];
+  $params['container'] = isset($params['container']) ? $params['container'] : 'auth0-login-form';
+  $params['sso'] = isset($settings['sso_enabled']) ? $settings['sso_enabled'] : FALSE;
+  $params['auth'] = isset($params['auth']) ? $params['auth'] : [];
+  $params['auth']['redirectUrl'] = isset($params['auth']['redirectUrl']) ? $params['auth']['redirectUrl'] : url('auth0/callback', ['absolute' => TRUE, 'query' => drupal_get_destination()]);
+  $params['auth']['responseType'] = isset($params['auth']['responseType']) ? $params['auth']['responseType'] : 'code';
+  $params['auth']['params'] = isset($params['auth']['params']) ? $params['auth']['params'] : [];
+  $params['auth']['params']['scope'] = isset($params['auth']['params']['scope']) ? $params['auth']['params']['scope'] : 'openid email';
+
+  if (!isset($_SESSION['auth0_session_started'])) {
+    $_SESSION['auth0_session_started'] = TRUE;
+    drupal_session_start();
+  }
+  $params['auth']['params']['state'] = isset($params['auth']['params']['state']) ? $params['auth']['params']['state'] : drupal_get_token('auth0_state');
+
+  if (auth0_enabled('signup')) {
+    $params['allowSignUp'] = TRUE;
+  }
+  else {
+    $params['allowSignUp'] = FALSE;
+  }
+
+  if (auth0_enabled('reset')) {
+    $params['disableResetAction'] = TRUE;
+  }
+  else {
+    $params['disableResetAction'] = FALSE;
+  }
+
+  drupal_alter('auth0_params', $params);
+  return $params;
+}
+
+/**
+ * Verify the provided JWT Token.
+ *
+ * @param string $token
+ *   Encoded token provided by client.
+ * @return mixed
+ *   Array with user details from token or FALSE if failed to be verified.
+ */
+function auth0_parse_jwt_token($token) {
+  // Give a 1 minute leeway for the timestamp verification.
+  \Firebase\JWT\JWT::$leeway = 60;
+  $settings = _auth0_get_settings();
+  $auth0_domain = 'https://' . $settings['domain'] . '/';
+  $auth0_settings = [
+    'authorized_iss' => [
+      $auth0_domain,
+    ],
+    'supported_algs' => [
+      $settings['jwt_signature_alg'],
+    ],
+    'valid_audiences' => [
+      $settings['client_id'],
+    ],
+    'client_secret' => $settings['client_secret'],
+    'secret_base64_encoded' => $settings['secret_base64_encoded'],
+  ];
+  $jwt_verifier = new JWTVerifier($auth0_settings);
+
+  try {
+    $user = $jwt_verifier->verifyAndDecode($token);
+  }
+  catch (\Exception $e) {
+    $watchdog_vars = ['%msg' => $e->getMessage()];
+    watchdog('Auth0', 'Error validating JWT token: %msg', $watchdog_vars, WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  return $user;
 }
