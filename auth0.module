@@ -308,7 +308,7 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $is_database_user = TRUE;
       }
     }
-    function_exists('dd') && dd(is_database_user, 'isDatabaseUser');
+    function_exists('dd') && dd($is_database_user, 'isDatabaseUser');
     $join_user = FALSE;
 
     if (variable_get('auth0_join_user_by_mail_enabled', FALSE)) {
