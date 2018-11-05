@@ -140,7 +140,7 @@ function auth0_verify_email_page() {
   catch(\Exception $e) {
     drupal_set_message(t('There was a problem re-sending the email.'), 'error');
     watchdog('Auth0',"Error validating the token while resending the email: ".$e->getMessage(), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
   try {
@@ -202,7 +202,7 @@ function auth0_callback() {
       'persist_id_token' => FALSE,
       'persist_user' => FALSE,
       'persist_access_token' => FALSE,
-      'persist_refresh_token' => FALSE    
+      'persist_refresh_token' => FALSE
     ));
 
   $user_info = NULL;
@@ -214,7 +214,7 @@ function auth0_callback() {
   catch (Exception $e) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     watchdog('Auth0', 'Error occurred while getting the Auth0 user info or ID token: @exception', array('@exception' => print_r($e, TRUE)), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
   // var_dump($auth0); die;
@@ -224,7 +224,7 @@ function auth0_callback() {
   if (!isset($query['state']) || !drupal_valid_token($query['state'], 'auth0_state')) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     watchdog('Auth0',"Could not validate the state", WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
   /**
@@ -244,7 +244,7 @@ function auth0_callback() {
   catch(\Exception $e) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     watchdog('Auth0',"Error validating the token: ".$e->getMessage(), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
 
@@ -368,6 +368,20 @@ function auth0_login_auth0_user($user_info, $id_token) {
       $uid = $joinUser->uid;
     }
     else {
+      // Check if account linking is enabled.
+      if (variable_get('auth0_allow_account_linking', FALSE)) {
+        $_SESSION['auth0_link_account_user_info'] = $user_info;
+        $destination = drupal_get_destination();
+        unset($_GET['destination']);
+        $vars = [
+          '%email' => $user_info['email'],
+          '@site_name' => variable_get('site_name', 'Drupal'),
+        ];
+        drupal_set_message(t('There is no user account with the email address
+          %email. Please login with your @site_name username and password to
+          link your accounts.', $vars), 'status', FALSE);
+        drupal_goto('user', ['query' => $destination]);
+      }
       // If we are here, we need to create the user.
       // Check drupal settings to see if new users are allowed to register.
       if (variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_ADMINISTRATORS_ONLY) {
@@ -761,12 +775,19 @@ function auth0_advanced_settings_form($form, &$form_state) {
     '#type' => 'checkbox',
     '#title' => t('Link auth0 logins to drupal users by email address'),
     '#default_value' => variable_get('auth0_join_user_by_mail_enabled', FALSE),
-    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email 
-address of the Auth0 user to search for a drupal user with the same email address and setup a link to that 
+    '#description' => t('If enabled, when a user logs into Drupal for the first time, the system will use the email
+address of the Auth0 user to search for a drupal user with the same email address and setup a link to that
 Drupal user account.
 <br/>If not enabled, then a new Drupal user will be created even if a Drupal user with the same email address already exists.
 '),
   );
+
+  $form['auth0_allow_account_linking'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Allow linking of accounts'),
+    '#default_value' => variable_get('auth0_allow_account_linking', FALSE),
+    '#description' => t('Allows the user, using site login credentials, to link an account with a different email address. This will prevent new users being created by the Auth0 nodule.'),
+  ];
 
   $form['auth0_sso'] = array(
     '#type' => 'checkbox',
@@ -836,7 +857,7 @@ Drupal user account.
 <br/>admin|administrator
 <br/>poweruser|power users
 <br/>
-<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.  
+<br/>NOTE: for any drupal role in the mapping, if a user is not mapped to the role, the role will be removed from their profile.
 Drupal roles not listed above will not be changed by this module.
 ')
   );
@@ -895,6 +916,34 @@ function auth0_form_alter(&$form, $form_state, $form_id) {
       drupal_goto('user/login');
     }
   }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Add extra submit handler to login form to link Auth0 and Drupal accounts.
+ */
+function auth0_form_user_login_alter(&$form, &$form_state) {
+  if (variable_get('auth0_allow_account_linking', FALSE)) {
+    if (!empty($_SESSION['auth0_link_account_user_info'])) {
+      $form_state['user_info'] = $_SESSION['auth0_link_account_user_info'];
+      if (empty($form['#submit'])) {
+        $form['#submit'] = ['user_login_submit'];
+      }
+      $form['#submit'][] = 'auth0_user_login_link_account_submit';
+    }
+  }
+}
+
+/**
+ * Link accounts form submission - login user and associate with Auth0 account.
+ */
+function auth0_user_login_link_account_submit($form, &$form_state) {
+  global $user;
+  auth0_insert_auth0_user($form_state['user_info'], $user->uid);
+  auth0_update_fields_and_roles($form_state['user_info'], $user->uid);
+  drupal_set_message(t('Thank you, your account has been linked successfully.'));
+  drupal_goto();
 }
 
 /**
@@ -1043,7 +1092,7 @@ function template_preprocess_auth0_lock(&$vars) {
     // Bail early so the login link is all that is shown.
     return;
   } else {
-    $vars['login_link'] = l(t('Log in'), _auth0_generate_authorize_url($query));    
+    $vars['login_link'] = l(t('Log in'), _auth0_generate_authorize_url($query));
   }
 
   // Add the custom css if specified.
