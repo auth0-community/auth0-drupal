@@ -61,6 +61,7 @@ class AuthController extends ControllerBase {
   const AUTH0_JWT_SIGNING_ALGORITHM = 'auth0_jwt_signature_alg';
   const AUTH0_SECRET_ENCODED = 'auth0_secret_base64_encoded';
   const AUTH0_OFFLINE_ACCESS = 'auth0_allow_offline_access';
+  const AUTH0_TENANT_CONNECTION = 'auth0_tenant_connection';
 
   protected $eventDispatcher;
   protected $tempStore;
@@ -128,6 +129,13 @@ class AuthController extends ControllerBase {
    * @var bool|null
    */
   protected $offlineAccess;
+
+  /**
+   * If we want to authorize agains the main tenant specified here.
+   *
+   * @var string
+   */
+  protected $tenantConnection;
 
   /**
    * The Auth0 helper.
@@ -205,6 +213,7 @@ class AuthController extends ControllerBase {
     $this->auth0JwtSignatureAlg = $this->config->get(AuthController::AUTH0_JWT_SIGNING_ALGORITHM);
     $this->secretBase64Encoded = FALSE || $this->config->get(AuthController::AUTH0_SECRET_ENCODED);
     $this->offlineAccess = FALSE || $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
+    $this->tenantConnection = FALSE || $this->config->get(AuthController::AUTH0_TENANT_CONNECTION);
     $this->httpClient = $http_client;
     $this->auth0 = FALSE;
   }
@@ -276,6 +285,7 @@ class AuthController extends ControllerBase {
             'state' => $this->getNonce($returnTo),
             'scopes' => AUTH0_DEFAULT_SCOPES,
             'offlineAccess' => $this->offlineAccess,
+            'tenantConnection' => $this->config->get('auth0_tenant_connection'),
             'formTitle' => $this->config->get('auth0_form_title'),
             'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
           ],
@@ -359,6 +369,10 @@ class AuthController extends ControllerBase {
 
     if ($this->offlineAccess) {
       $additional_params['scope'] .= ' offline_access';
+    }
+
+    if ($this->tenantConnection) {
+      $additional_params['connection'] = $this->config->get('auth0_tenant_connection');
     }
 
     if ($prompt) {

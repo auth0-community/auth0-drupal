@@ -36,6 +36,13 @@ class BasicAdvancedForm extends FormBase {
       '#description' => $this->t('This is the title for the login widget.'),
     ];
 
+    $form['auth0_tenant_connection'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Tenant connection'),
+      '#default_value' => $config->get('auth0_tenant_connection') ?: $this->t(''),
+      '#description' => $this->t('This is the other tenant that you want to authenticate against, e.g. main-tenant-oidc.'),
+    ];
+
     $form['auth0_allow_signup'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Allow user signup'),
@@ -191,7 +198,7 @@ Drupal roles not listed above will not be changed by this module.
       ->set('auth0_claim_mapping', $form_state->getValue('auth0_claim_mapping'))
       ->set('auth0_claim_to_use_for_role', $form_state->getValue('auth0_claim_to_use_for_role'))
       ->set('auth0_role_mapping', $form_state->getValue('auth0_role_mapping'))
-      ->set('auth0_username_claim', $form_state->getValue('auth0_username_claim'))
+      ->set('auth0_tenant_connection', $form_state->getValue('auth0_tenant_connection'))
       ->save();
   }
 

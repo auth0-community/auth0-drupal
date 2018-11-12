@@ -24,6 +24,7 @@ class AuthHelper {
   const AUTH0_JWT_SIGNING_ALGORITHM = 'auth0_jwt_signature_alg';
   const AUTH0_SECRET_ENCODED = 'auth0_secret_base64_encoded';
   const AUTH0_OFFLINE_ACCESS = 'auth0_allow_offline_access';
+  const AUTH0_TENANT_CONNECTION = 'auth0_tenant_connection';
 
   private $logger;
   private $config;
