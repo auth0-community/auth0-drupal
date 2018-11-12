@@ -285,7 +285,6 @@ class AuthController extends ControllerBase {
             'state' => $this->getNonce($returnTo),
             'scopes' => AUTH0_DEFAULT_SCOPES,
             'offlineAccess' => $this->offlineAccess,
-            'tenantConnection' => $this->config->get('auth0_tenant_connection'),
             'formTitle' => $this->config->get('auth0_form_title'),
             'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
           ],
@@ -373,6 +372,10 @@ class AuthController extends ControllerBase {
 
     if ($this->tenantConnection) {
       $additional_params['connection'] = $this->config->get('auth0_tenant_connection');
+    }
+
+    if ($this->config->get('auth0_allow_signup')) {
+      $additional_params['display'] = 'sup';
     }
 
     if ($prompt) {

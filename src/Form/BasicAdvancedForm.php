@@ -40,7 +40,7 @@ class BasicAdvancedForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Tenant connection'),
       '#default_value' => $config->get('auth0_tenant_connection') ?: $this->t(''),
-      '#description' => $this->t('This is the other tenant that you want to authenticate against, e.g. main-tenant-oidc.'),
+      '#description' => $this->t('This is the other tenant that you want to authenticate against, e.g. main-tenant-oidc. Please activate Redirect Login for SSO for that use case.'),
     ];
 
     $form['auth0_allow_signup'] = [
