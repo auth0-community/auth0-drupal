@@ -250,10 +250,24 @@ function auth0_callback() {
 
   $success = FALSE;
 
-  if (isset($user_info['sub']) && !isset($user_info['user_id'])) $user_info['user_id'] = $user_info['sub'];
   if ($user_info) {
+    if (!isset($user_info['sub']) && isset($user_info['user_id'])) {
+      $user_info['sub'] = $user_info['user_id'];
+    }
+    elseif (!isset($user_info['user_id']) && isset($user_info['sub'])) {
+      $user_info['user_id'] = $user_info['sub'];
+    }
+
+    if ($user_info['sub'] != $user->sub) {
+      drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
+      watchdog('Auth0',"Failed to verify JWT sub: ".$e->getMessage(), WATCHDOG_ERROR);
+      return drupal_goto();
+    }
+
+    function_exists('dd') && dd('Good Login');
     $success = auth0_login_auth0_user($user_info, $id_token);
   }
+
   if (!$success) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     watchdog('Auth0',"user_info missing", WATCHDOG_ERROR);
