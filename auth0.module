@@ -327,22 +327,14 @@ function auth0_login_auth0_user($user_info, $id_token) {
     // him to an existing one.
     $isDatabaseUser = FALSE;
 
-    /* Make sure we have the identities array, if not, fetch it from the user endpoint */
-    $hasIdentities = (is_object($user_info) && $user_info->has('identities')) ||
-      (is_array($user_info) && array_key_exists('identities', $user_info));
-    if (!$hasIdentities) {
-      $mgmtClient = new Management($id_token, variable_get('auth0_domain', ''));
+    $user_sub_arr = explode('|', $user_info['user_id']);
+    $provider = $user_sub_arr[0];
 
-      $user = $mgmtClient->users->get($user_info['user_id']);
-      $user_info['identities'] = $user['identities'];
-    }
-
-    foreach ($user_info['identities'] as $identity) {
-      if ($identity['provider'] == "auth0") {
-        $isDatabaseUser = TRUE;
-      }
+    if ('auth0' === $provider) {
+      $isDatabaseUser = TRUE;
     }
     function_exists('dd') && dd($isDatabaseUser, 'isDatabaseUser');
+
     $joinUser = FALSE;
 
     if (variable_get('auth0_join_user_by_mail_enabled', FALSE)) {
