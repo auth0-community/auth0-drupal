@@ -139,7 +139,7 @@ function auth0_verify_email_page() {
   }
   catch(\Exception $e) {
     drupal_set_message(t('There was a problem re-sending the email.'), 'error');
-    watchdog('Auth0',"Error validating the token while resending the email: ".$e->getMessage(), WATCHDOG_ERROR);
+    watchdog('Auth0', 'Error validating the token while resending the email: '.$e->getMessage(), array(), WATCHDOG_ERROR);
     return drupal_goto(); 
   }
 
@@ -223,7 +223,7 @@ function auth0_callback() {
   $query = drupal_get_query_parameters();
   if (!isset($query['state']) || !drupal_valid_token($query['state'], 'auth0_state')) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0',"Could not validate the state", WATCHDOG_ERROR);
+    watchdog('Auth0', 'Could not validate the state', array(), WATCHDOG_ERROR);
     return drupal_goto(); 
   }
 
@@ -243,7 +243,7 @@ function auth0_callback() {
   }
   catch(\Exception $e) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0',"Error validating the token: ".$e->getMessage(), WATCHDOG_ERROR);
+    watchdog('Auth0', 'Error validating the token: '.$e->getMessage(), array(), WATCHDOG_ERROR);
     return drupal_goto(); 
   }
 
@@ -260,7 +260,7 @@ function auth0_callback() {
 
     if ($user_info['sub'] != $user->sub) {
       drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-      watchdog('Auth0',"Failed to verify JWT sub: ".$e->getMessage(), WATCHDOG_ERROR);
+      watchdog('Auth0', 'Failed to verify JWT sub: '.$e->getMessage(), array(), WATCHDOG_ERROR);
       return drupal_goto();
     }
 
@@ -270,7 +270,7 @@ function auth0_callback() {
 
   if (!$success) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0',"user_info missing", WATCHDOG_ERROR);
+    watchdog('Auth0', 'user_info missing', array(), WATCHDOG_ERROR);
   }
 
   return drupal_goto();
