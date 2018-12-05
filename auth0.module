@@ -144,22 +144,27 @@ function auth0_verify_email_page() {
   }
 
   try {
+    function_exists('dd') && dd('sending verification email');
     $userId = $user->sub;
-    $url = "https://$domain/api/users/$userId/send_verification_email";
-    $headers = array('Authorization' => "Bearer $token");
-    $result = drupal_http_request($url, array('headers' => $headers, 'method' => 'POST'));
 
-    if ($result->code == 200) {
-      drupal_set_message(t('A verification message with further instructions has been sent to your e-mail address.'));
-    }
-    else {
-      drupal_set_message(t('Sorry, we could not send a verification e-mail. Please try again later.'), 'error');
-    }
+    /* Need to use v2 Mgmt API to send verify email, must use tenancy domain for audience */
+    $audience = 'https://' . check_plain(variable_get("auth0_domain", '')) . '/api/v2/';
+    $auth0 = new Authentication($domain, $client_id);
+    $auth0_api = $auth0->client_credentials(array(
+      'client_id' => $client_id,
+      'client_secret' => $client_secret,
+      'audience' => $audience));
+    $access_token = $auth0_api['access_token'];
+    $mgmtClient = new Management($access_token, $domain);
+    $result = $mgmtClient->jobs->sendVerificationEmail($userId);
+
+    drupal_set_message(t('A verification message with further instructions has been sent to your e-mail address.'));
+    
   }
-  catch (Exception $e) {
+  catch (\Exception $e) {
     drupal_set_message(t('Sorry, we could not send a verification e-mail. Please try again later.'), 'error');
+    watchdog('Auth0', 'Error occurred while sending the verification email: '.$e->getMessage(), array(), WATCHDOG_ERROR);
   }
-
   return drupal_goto();
 }
 
