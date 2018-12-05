@@ -178,7 +178,10 @@ function auth0_callback() {
 
   /* Can these come in a post? */
   $query = drupal_get_query_parameters();
-  if (isset($query['error']) && $query['error'] == 'login_required') {
+  if (isset($query['error']) && (
+      $query['error'] == 'login_required' ||
+      $query['error'] == 'consent_required' )
+    ) {
     $authorizeUrl = _auth0_generate_authorize_url(FALSE);
 
     /* Have to deal with this destination parameter or drupal_goto completely ignores your request to go somewhere other than destination! */
