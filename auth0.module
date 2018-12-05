@@ -120,7 +120,7 @@ function auth0_verify_email_page() {
   /**
     * Validate the ID Token
     */
-  $domain = variable_get('auth0_domain', '');
+  $domain = getDomain();
   $client_id = variable_get('auth0_client_id', '');
   $client_secret = variable_get('auth0_client_secret', '');
   $secret_base64_encoded = variable_get('auth0_secret_base64_encoded', FALSE);
@@ -188,7 +188,7 @@ function auth0_callback() {
     return drupal_goto($authorizeUrl, array('external' => TRUE, 'absolute' => TRUE));
   }
 
-  $domain = variable_get('auth0_domain', '');
+  $domain = getDomain();
   $client_id = variable_get('auth0_client_id', '');
   $client_secret = variable_get('auth0_client_secret', '');
   $secret_base64_encoded = variable_get('auth0_secret_base64_encoded', FALSE);
@@ -678,8 +678,15 @@ function auth0_basic_settings_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Domain'),
     '#default_value' => variable_get('auth0_domain', ''),
-    '#description' => t('Your Auth0 domain, you can see it in the auth0 dashboard.'),
+    '#description' => t('Your Auth0 tenancy domain, you can see it in the auth0 dashboard.'),
     '#required' => TRUE,
+  );
+  $form['auth0_custom_domain'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Custom Domain'),
+    '#default_value' => variable_get('auth0_custom_domain', ''),
+    '#description' => t('Your Auth0 custom domain, if in use. You can see it in the auth0 dashboard.'),
+    '#required' => FALSE,
   );
   $form['auth0_client_id'] = array(
     '#type' => 'textfield',
@@ -747,7 +754,6 @@ function auth0_advanced_settings_form($form, &$form_state) {
     '#default_value' => variable_get('auth0_allow_signup', TRUE),
     '#description' => t('If you have database connection you can allow users to signup using the Auth0 widget.'),
   );
-
 
   $form['auth0_widget_cdn'] = array(
     '#type' => 'textfield',
@@ -860,7 +866,7 @@ function auth0_user_logout($account) {
   if (variable_get("auth0_sso", FALSE)) {
     session_destroy();
 
-    $domain = check_plain(variable_get("auth0_domain", ''));
+    $domain = getDomain();
 
     if(variable_get("auth0_returnTo_app",FALSE)) {
       $client = check_plain(variable_get("auth0_client_id", ''));
@@ -965,7 +971,7 @@ function _auth0_generate_authorize_url($prompt) {
   $additional_params['scope'] = 'openid profile email';
   $additional_params = array_merge($additional_params, $query);
 
-  $domain = check_plain(variable_get("auth0_domain", ''));
+  $domain = getDomain();
   $client_id = check_plain(variable_get("auth0_client_id", ''));
   $auth0Api = new Authentication($domain, $client_id);
   return $auth0Api->get_authorize_link($response_type, $redirect_uri, $connection, $state, $additional_params);
@@ -992,7 +998,7 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
  */
 function template_preprocess_auth0_lock(&$vars) {
   $vars['sso_enabled'] = (boolean)variable_get("auth0_sso", FALSE);
-  $vars['domain'] = check_plain(variable_get("auth0_domain", ''));
+  $vars['domain'] = getDomain();
   $vars['client_id'] = check_plain(variable_get("auth0_client_id", ''));
   $vars['lock_extra_settings'] = json_decode(variable_get("auth0_lock_extra_settings", ''), true);
 
@@ -1168,4 +1174,14 @@ function auth0_block_view($delta = '') {
   }
 
   return $block;
+}
+
+function getDomain() {
+
+  $domain = check_plain(variable_get('auth0_domain', ''));
+  $custom_domain = check_plain(variable_get('auth0_custom_domain', ''));
+
+  dd(isset($custom_domain) ? $custom_domain : $domain, 'Domain');
+
+  return isset($custom_domain) ? $custom_domain : $domain;
 }
