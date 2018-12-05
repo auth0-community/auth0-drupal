@@ -783,6 +783,37 @@ Drupal user account.
 '),
   );
 
+  $form['auth0_user_push'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Push new users into Auth0'),
+    '#default_value' => variable_get('auth0_user_push', FALSE),
+    '#description' => t('When a user is created in Drupal, push this to Auth0. This is sometimes required when the Drupal database is in extended migration mode.'),
+  );
+
+  $form['auth0_user_push_connection'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Connection to use for the new user pushed into Auth0'),
+    '#default_value' => variable_get('auth0_user_push_connection', ''),
+    '#description' => t('The connection to use for the new user that is pushed into Auth0.'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="auth0_user_push"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  $form['auth0_user_push_app_metadata'] = array(
+    '#type' => 'textarea',
+    '#title' => t('app_metadata for the new user pushed into Auth0'),
+    '#default_value' => variable_get('auth0_user_push_app_metadata', ''),
+    '#description' => t('This should be a valid JSON. This object will be used on new user that is pushed into Auth0.'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="auth0_user_push"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
   $form['auth0_sso'] = array(
     '#type' => 'checkbox',
     '#title' => t('SSO enabled'),
@@ -896,8 +927,17 @@ function auth0_form_alter(&$form, $form_state, $form_id) {
   }
 
   // If Auth0 controls the user database.
-  if ($form_id == 'user_register_form' && auth0_enabled('signup')) {
-    _auth0_form_replace_with_lock($form, 'signup');
+  if ($form_id == 'user_register_form') {
+    if (auth0_enabled('signup')) {
+      _auth0_form_replace_with_lock($form, 'signup');
+    } else {
+      $form['account']['pass']['#type'] = 'textfield';
+      $form['account']['pass']['#default_value'] = user_password();
+      $form['account']['pass']['#access'] = FALSE;
+      $form['account']['status']['#access'] = FALSE;
+      $form['account']['notify']['#access'] =  FALSE;
+      return;
+    }
   }
   if ($form_id == 'user_pass' && auth0_enabled('reset')) {
     _auth0_form_replace_with_lock($form, 'reset');
@@ -1187,4 +1227,75 @@ function getDomain() {
   dd(isset($custom_domain) ? $custom_domain : $domain, 'Domain');
 
   return isset($custom_domain) ? $custom_domain : $domain;
+}
+/**
+ * Implements hook_user_presave().
+ *
+ * Create the user in Auth0
+ */
+function auth0_user_presave(&$edit, $account, $category) {
+  $connection = variable_get('auth0_user_push_connection', '');
+
+  if (variable_get('auth0_user_push', FALSE) && isset($connection)) {
+
+    if (isset($account->is_new) && !empty($account->is_new)) {
+
+      // Create the user in Auth0 with a DB connection
+      try {
+        $domain = getDomain();
+        $client_id = variable_get('auth0_client_id', '');
+        $client_secret = variable_get('auth0_client_secret', '');
+        $audience = 'https://' . check_plain(variable_get("auth0_domain", '')) . '/api/v2/';
+
+        $auth0 = new Authentication($domain, $client_id);
+
+        $auth0_api = $auth0->client_credentials(array(
+          'client_id' => $client_id,
+          'client_secret' => $client_secret,
+          'audience' => $audience));
+
+        $access_token = $auth0_api['access_token'];
+
+        $mgmtClient = new Management($access_token, $domain);
+
+        $api_result = $mgmtClient->users->create(array(
+          'connection' => $connection,
+          'email' => $edit['mail'],
+          'password' => user_password() . '!',  // Satisfy Auth0 password policy
+          'email_verified' => TRUE,
+          'app_metadata' => json_decode(variable_get('auth0_user_push_app_metadata', ''), true)
+        ));
+
+        drupal_set_message(t('The account has been created in Auth0.'), 'status');
+
+        try {
+          // Send a Link for a passwordless login
+
+          $authParams = array(
+            'redirect_uri' => url('auth0/callback', array('absolute' => TRUE, 'query' => array(
+                  'destination' => variable_get('site_frontpage', 'node')))
+            ),
+            'scope' => 'openid profile email',
+            'response_type' => 'code'
+          );
+
+          $link_result = $auth0->email_passwordless_start($edit['mail'], 'link', $authParams);
+
+          drupal_set_message(t('An Email with a one-time link has been sent.'), 'status');
+        }
+        catch(\Exception $e) {
+          drupal_set_message(t('There was a problem sending the one-time link from Auth0.'), 'error');
+          watchdog('Auth0', 'Error creating passwordless start: '.$e->getMessage(), array(), WATCHDOG_ERROR);
+        }
+      }
+      catch (ClientException $e) {
+        drupal_set_message(t('There was a problem creating the user in Auth0.'), 'error');
+        watchdog('Auth0', 'Error creating client API session: '.$e->getMessage(), array(), WATCHDOG_ERROR);
+      }
+      catch(\Exception $e) {
+        drupal_set_message(t('There was a problem creating the user in Auth0.'), 'error');
+        watchdog('Auth0', 'Error creating user in Auth0: '.$e->getMessage(), array(), WATCHDOG_ERROR);
+      }
+    }
+  }
 }
