@@ -41,6 +41,7 @@ use Drupal\auth0\Util\AuthHelper;
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\Auth0;
 use Auth0\SDK\API\Authentication;
+use Auth0\SDK\API\Management;
 use Auth0\SDK\API\Helpers\State\SessionStateHandler;
 use Auth0\SDK\Store\SessionStore;
 use GuzzleHttp\Client;
@@ -1044,20 +1045,8 @@ class AuthController extends ControllerBase {
    */
   // phpcs:ignore
   public function verify_email(Request $request) {
-    $idToken = $request->get('idToken');
-
-    // Validate the ID Token.
-    $auth0_domain = 'https://' . $this->domain . '/';
-    $auth0_settings = [];
-    $auth0_settings['authorized_iss'] = [$auth0_domain];
-    $auth0_settings['supported_algs'] = [$this->auth0JwtSignatureAlg];
-    $auth0_settings['valid_audiences'] = [$this->clientId];
-    $auth0_settings['client_secret'] = $this->clientSecret;
-    $auth0_settings['secret_base64_encoded'] = $this->secretBase64Encoded;
-    $jwt_verifier = new JWTVerifier($auth0_settings);
-
     try {
-      $user = $jwt_verifier->verifyAndDecode($idToken);
+      $user = $this->helper->validateIdToken($request->get('idToken'));
     }
     catch (\Exception $e) {
       return $this->failLogin($this->t('There was a problem resending the verification email, sorry for the inconvenience.'),
@@ -1066,23 +1055,23 @@ class AuthController extends ControllerBase {
 
     try {
       $userId = $user->sub;
-      $url = "https://$this->domain/api/users/$userId/send_verification_email";
+      /* Need to use v2 Mgmt API to send verify email, must use tenancy domain for audience */
+      $audience = 'https://' . $this->domain . '/api/v2/';
+      $auth0Api = new Authentication($this->helper->getDomain(), $this->clientId, $this->clientSecret, $audience);
+      $auth0Client = $auth0Api->client_credentials([]);
+      $access_token = $auth0Client['access_token'];
+      $mgmtClient = new Management($access_token, $this->helper->getDomain());
+      $result = $mgmtClient->jobs->sendVerificationEmail($userId);
 
-      $client = $this->httpClient;
+      drupal_set_message($this->t('A verification message with further instructions has been sent to your e-mail address.'));
 
-      $client->request('POST', $url, [
-        "headers" => [
-          "Authorization" => "Bearer $idToken",
-        ],
-      ]);
-
-      drupal_set_message($this->t('An Authorization email was sent to your account'));
     }
     catch (\UnexpectedValueException $e) {
       drupal_set_message($this->t('Your session has expired.'), 'error');
     }
     catch (\Exception $e) {
       drupal_set_message($this->t('Sorry, we could not send the email'), 'error');
+      $this->auth0Logger->warning($this->t('Failed sending verification email: @exception', ['@exception' => $e->getMessage()]));
     }
 
     return new RedirectResponse('/');
