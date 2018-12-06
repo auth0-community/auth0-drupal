@@ -1250,7 +1250,7 @@ function auth0_user_presave(&$edit, $account, $category) {
 
   // skip if the user create came from Auth0, is not new or if push disabled.
 
-  if (variable_get('auth0_user_push', FALSE) && isset($connection) && (!isset($account->data['auth0_id'])) {
+  if (variable_get('auth0_user_push', FALSE) && isset($connection) && !isset($account->data['auth0_id'])) {
 
     if (isset($account->is_new) && !empty($account->is_new)) {
 
