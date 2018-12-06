@@ -385,18 +385,32 @@ class AuthController extends ControllerBase {
    * @param string $returnTo
    *   The return url.
    *
-   * @return \Drupal\Core\Routing\TrustedRedirectResponse|null
+   * @return \Drupal\Core\Routing\TrustedRedirectResponse
+   *         \Symfony\Component\HttpFoundation\RedirectResponse
+   *         null
    *   The redirect response.
    */
   private function checkForError(Request $request, $returnTo) {
+    $error_msg = $this->t('There was a problem logging you in, sorry for the inconvenience.');
+
     // Check for errors.
     // Check in query.
-    if ($request->query->has('error') && $request->query->get('error') == 'login_required') {
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
+    if ($request->query->has('error')) {
+      if ($request->query->get('error') == 'login_required' || 
+          $request->query->get('error') == 'consent_required') {
+        return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
+      } else {
+        return $this->failLogin($error_msg . $request->query->get('error_description'), $request->query->get('error_description'));
+      }
     }
     // Check in post.
-    if ($request->request->has('error') && $request->request->get('error') == 'login_required') {
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
+    if ($request->request->has('error')) {
+      if ($request->request->get('error') == 'login_required' || 
+          $request->request->get('error') == 'consent_required') {
+        return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
+      } else {
+        return $this->failLogin($error_msg . $request->request->get('error_description'), $request->request->get('error_description')); 
+      }
     }
 
     return NULL;
