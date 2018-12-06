@@ -55,6 +55,7 @@ class AuthController extends ControllerBase {
   const STATE = 'state';
   const AUTH0_LOGGER = 'auth0_controller';
   const AUTH0_DOMAIN = 'auth0_domain';
+  const AUTH0_CUSTOM_DOMAIN = 'auth0_custom_domain';
   const AUTH0_CLIENT_ID = 'auth0_client_id';
   const AUTH0_CLIENT_SECRET = 'auth0_client_secret';
   const AUTH0_REDIRECT_FOR_SSO = 'auth0_redirect_for_sso';
@@ -86,6 +87,13 @@ class AuthController extends ControllerBase {
    * @var string|null
    */
   protected $domain;
+
+  /**
+   * The Auth0 Custom Domain.
+   *
+   * @var string|null
+   */
+  protected $custom_domain;
 
   /**
    * The Auth0 client id.
@@ -199,6 +207,7 @@ class AuthController extends ControllerBase {
     $this->auth0Logger = $logger_factory->get('auth0');
     $this->config = $config_factory->get('auth0.settings');
     $this->domain = $this->config->get(AuthController::AUTH0_DOMAIN);
+    $this->custom_domain = $this->config->get(AuthController::AUTH0_CUSTOM_DOMAIN);
     $this->clientId = $this->config->get(AuthController::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthController::AUTH0_CLIENT_SECRET);
     $this->redirectForSso = $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
@@ -268,7 +277,7 @@ class AuthController extends ControllerBase {
         'drupalSettings' => [
           'auth0' => [
             'clientId' => $this->config->get('auth0_client_id'),
-            'domain' => $this->config->get('auth0_domain'),
+            'domain' => $this->helper->getDomain(),
             'lockExtraSettings' => $lockExtraSettings,
             'configurationBaseUrl' => 'https://cdn.auth0.com',
             'showSignup' => $this->config->get('auth0_allow_signup'),
@@ -293,7 +302,7 @@ class AuthController extends ControllerBase {
   public function logout() {
     global $base_root;
 
-    $auth0Api = new Authentication($this->domain, $this->clientId);
+    $auth0Api = new Authentication($this->helper->getDomain(), $this->clientId);
 
     user_logout();
 
@@ -348,7 +357,7 @@ class AuthController extends ControllerBase {
   protected function buildAuthorizeUrl($prompt, $returnTo = NULL) {
     global $base_root;
 
-    $auth0Api = new Authentication($this->domain, $this->clientId);
+    $auth0Api = new Authentication($this->helper->getDomain(), $this->clientId);
 
     $response_type = 'code';
     $redirect_uri = "$base_root/auth0/callback";
@@ -418,7 +427,7 @@ class AuthController extends ControllerBase {
 
     // Set store to null so that the store is set to SessionStore.
     $this->auth0 = new Auth0([
-      'domain'        => $this->domain,
+      'domain'        => $this->helper->getDomain(),
       'client_id'     => $this->clientId,
       'client_secret' => $this->clientSecret,
       'redirect_uri'  => "$base_root/auth0/callback",

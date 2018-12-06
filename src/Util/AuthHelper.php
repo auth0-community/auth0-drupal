@@ -18,6 +18,7 @@ use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 class AuthHelper {
   const AUTH0_LOGGER = 'auth0_helper';
   const AUTH0_DOMAIN = 'auth0_domain';
+  const AUTH0_CUSTOM_DOMAIN = 'auth0_custom_domain';
   const AUTH0_CLIENT_ID = 'auth0_client_id';
   const AUTH0_CLIENT_SECRET = 'auth0_client_secret';
   const AUTH0_REDIRECT_FOR_SSO = 'auth0_redirect_for_sso';
@@ -28,6 +29,7 @@ class AuthHelper {
   private $logger;
   private $config;
   private $domain;
+  private $custom_domain;
   private $clientId;
   private $clientSecret;
   private $redirectForSso;
@@ -49,6 +51,7 @@ class AuthHelper {
     $this->logger = $logger_factory->get(AuthHelper::AUTH0_LOGGER);
     $this->config = $config_factory->get('auth0.settings');
     $this->domain = $this->config->get(AuthHelper::AUTH0_DOMAIN);
+    $this->custom_domain = $this->config->get(AuthHelper::AUTH0_CUSTOM_DOMAIN);
     $this->clientId = $this->config->get(AuthHelper::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthHelper::AUTH0_CLIENT_SECRET);
     $this->redirectForSso = $this->config->get(AuthHelper::AUTH0_REDIRECT_FOR_SSO);
@@ -74,7 +77,7 @@ class AuthHelper {
   public function getUserUsingRefreshToken($refreshToken) {
     global $base_root;
 
-    $auth0Api = new Authentication($this->domain, $this->clientId, $this->clientSecret);
+    $auth0Api = new Authentication($this->getDomain(), $this->clientId, $this->clientSecret);
 
     try {
       $tokens = $auth0Api->oauth_token([
@@ -105,7 +108,7 @@ class AuthHelper {
    * @throws \Exception
    */
   public function validateIdToken($idToken) {
-    $auth0_domain = 'https://' . $this->domain . '/';
+    $auth0_domain = 'https://' . $this->getDomain() . '/';
     $auth0_settings = [];
     $auth0_settings['authorized_iss'] = [$auth0_domain];
     $auth0_settings['supported_algs'] = [$this->auth0JwtSignatureAlg];
@@ -116,4 +119,17 @@ class AuthHelper {
     return $jwt_verifier->verifyAndDecode($idToken);
   }
 
+  /**
+   * Return the Domain
+   *
+   * @param none
+   *
+   * @return mixed
+   *   A string with the domain name
+   *   A empty string if the config is not set
+   *
+   */
+  public function getDomain() {
+      return isset($this->custom_domain) ? $this->custom_domain : $this->domain;
+  }
 }

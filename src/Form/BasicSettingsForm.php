@@ -61,6 +61,14 @@ class BasicSettingsForm extends FormBase {
       '#required' => TRUE,
     ];
 
+    $form['auth0_custom_domain'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Custom Domain'),
+      '#default_value' => $config->get('auth0_custom_domain') ?: '',
+      '#description' => $this->t('Your Auth0 custom domain, if in use. You can see it in the auth0 dashboard.'),
+      '#required' => FALSE,
+    ];
+
     $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = [
       '#type' => 'select',
       '#title' => $this->t('JsonWebToken Signature Algorithm'),
@@ -116,6 +124,7 @@ class BasicSettingsForm extends FormBase {
     $config->set('auth0_client_id', $form_state->getValue('auth0_client_id'))
       ->set('auth0_client_secret', $form_state->getValue('auth0_client_secret'))
       ->set('auth0_domain', $form_state->getValue('auth0_domain'))
+      ->set('auth0_custom_domain', $form_state->getValue('auth0_custom_domain'))
       ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
       ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
       ->save();
