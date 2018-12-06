@@ -183,17 +183,22 @@ function auth0_callback() {
 
   /* Can these come in a post? */
   $query = drupal_get_query_parameters();
-  if (isset($query['error']) && (
-      $query['error'] == 'login_required' ||
-      $query['error'] == 'consent_required' )
-    ) {
-    $authorizeUrl = _auth0_generate_authorize_url(FALSE);
+  if (isset($query['error']) ) {
+      if ($query['error'] == 'login_required' || $query['error'] == 'consent_required') {
+        $authorizeUrl = _auth0_generate_authorize_url(FALSE);
 
-    /* Have to deal with this destination parameter or drupal_goto completely ignores your request to go somewhere other than destination! */
-    unset($_GET['destination']);
-    drupal_static_reset('drupal_get_destination');
-    drupal_get_destination();
-    return drupal_goto($authorizeUrl, array('external' => TRUE, 'absolute' => TRUE));
+        /* Have to deal with this destination parameter or drupal_goto completely ignores your request to go somewhere other than destination! */
+        unset($_GET['destination']);
+        drupal_static_reset('drupal_get_destination');
+        drupal_get_destination();
+        return drupal_goto($authorizeUrl, array('external' => TRUE, 'absolute' => TRUE));
+      } else {
+        $error_msg = print_r($query['error'] . ', ' .$query['error_description'], TRUE);
+        drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
+        drupal_set_message(t($error_msg), 'error');
+        watchdog('Auth0', 'Error occurred while authenticating the user: @exception', array('@exception' => $error_msg), WATCHDOG_ERROR);
+        return drupal_goto(); 
+      }
   }
 
   $domain = getDomain();
