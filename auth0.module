@@ -649,6 +649,10 @@ function auth0_create_user_from_auth0($user_info) {
     $user->status = variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_VISITORS;
   }
   $user->pass = user_password();
+  // Add Auth0 id so that the presave can prevent a race condition.
+  $user->data = array(
+     'auth0_id' => $user_info['user_id']
+  );
   function_exists('dd') && dd($user, 'saving new drupal user');
   $new_user = user_save($user);
 
@@ -1244,7 +1248,9 @@ function getDomain() {
 function auth0_user_presave(&$edit, $account, $category) {
   $connection = variable_get('auth0_user_push_connection', '');
 
-  if (variable_get('auth0_user_push', FALSE) && isset($connection)) {
+  // skip if the user create came from Auth0, is not new or if push disabled.
+
+  if (variable_get('auth0_user_push', FALSE) && isset($connection) && (!isset($account->data['auth0_id'])) {
 
     if (isset($account->is_new) && !empty($account->is_new)) {
 
@@ -1268,7 +1274,7 @@ function auth0_user_presave(&$edit, $account, $category) {
 
         $api_result = $mgmtClient->users->create(array(
           'connection' => $connection,
-          'email' => $edit['mail'],
+          'email' => $account['mail'],
           'password' => user_password() . '!',  // Satisfy Auth0 password policy
           'email_verified' => TRUE,
           'app_metadata' => json_decode(variable_get('auth0_user_push_app_metadata', ''), true)
@@ -1287,7 +1293,7 @@ function auth0_user_presave(&$edit, $account, $category) {
             'response_type' => 'code'
           );
 
-          $link_result = $auth0->email_passwordless_start($edit['mail'], 'link', $authParams);
+          $link_result = $auth0->email_passwordless_start($account['mail'], 'link', $authParams);
 
           drupal_set_message(t('An Email with a one-time link has been sent.'), 'status');
         }
