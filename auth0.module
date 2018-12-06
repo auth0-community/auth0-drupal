@@ -1229,8 +1229,6 @@ function getDomain() {
   $domain = check_plain(variable_get('auth0_domain', ''));
   $custom_domain = check_plain(variable_get('auth0_custom_domain', ''));
 
-  dd(isset($custom_domain) ? $custom_domain : $domain, 'Domain');
-
   return isset($custom_domain) ? $custom_domain : $domain;
 }
 /**
