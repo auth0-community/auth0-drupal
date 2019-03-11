@@ -9,6 +9,9 @@ namespace Drupal\auth0\Util;
 
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\API\Authentication;
+use Auth0\SDK\API\Helpers\ApiClient;
+use Auth0\SDK\API\Helpers\InformationHeaders;
+
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
@@ -57,6 +60,8 @@ class AuthHelper {
       AUTH0_DEFAULT_SIGNING_ALGORITHM
     );
     $this->secretBase64Encoded = FALSE || $this->config->get(AuthHelper::AUTH0_SECRET_ENCODED);
+
+    self::setTelemetry();
   }
 
   /**
@@ -114,6 +119,19 @@ class AuthHelper {
     $auth0_settings['secret_base64_encoded'] = $this->secretBase64Encoded;
     $jwt_verifier = new JWTVerifier($auth0_settings);
     return $jwt_verifier->verifyAndDecode($idToken);
+  }
+
+  /**
+   *
+   */
+  public static function setTelemetry() {
+    $oldInfoHeaders = ApiClient::getInfoHeadersData();
+    if ($oldInfoHeaders) {
+      $infoHeaders = InformationHeaders::Extend($oldInfoHeaders);
+      $infoHeaders->setEnvironment('drupal', \Drupal::VERSION);
+      $infoHeaders->setPackage('auth0-drupal', AUTH0_MODULE_VERSION);
+      ApiClient::setInfoHeadersData($infoHeaders);
+    }
   }
 
 }

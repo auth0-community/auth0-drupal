@@ -8,6 +8,7 @@
 define('AUTH0_DEFAULT_SCOPES', 'openid email profile');
 define('AUTH0_DEFAULT_SIGNING_ALGORITHM', 'RS256');
 define('AUTH0_DEFAULT_USERNAME_CLAIM', 'nickname');
+define('AUTH0_MODULE_VERSION', '8.x-2.2');
 
 /**
  * Replace a form with the lock widget.
