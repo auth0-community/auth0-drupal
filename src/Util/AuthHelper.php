@@ -73,8 +73,9 @@ class AuthHelper {
    * @return array
    *   A user array of named claims from the ID token.
    *
-   * @throws \Drupal\auth0\Exception\RefreshTokenFailedException
-   *   The token failure exception.
+   * @throws RefreshTokenFailedException
+   * @throws CoreException
+   * @throws InvalidTokenException
    */
   public function getUserUsingRefreshToken($refreshToken) {
     global $base_root;
@@ -122,7 +123,7 @@ class AuthHelper {
   }
 
   /**
-   *
+   * Extend Auth0 PHP SDK telemetry to report for Drupal.
    */
   public static function setTelemetry() {
     $oldInfoHeaders = ApiClient::getInfoHeadersData();
