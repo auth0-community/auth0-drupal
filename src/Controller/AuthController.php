@@ -31,6 +31,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 use Drupal\auth0\Event\Auth0UserSigninEvent;
 use Drupal\auth0\Event\Auth0UserSignupEvent;
+use Drupal\auth0\Event\Auth0UserPreLoginEvent;
 use Drupal\auth0\Exception\EmailNotSetException;
 use Drupal\auth0\Exception\EmailNotVerifiedException;
 use Drupal\Core\PageCache\ResponsePolicyInterface;
@@ -530,6 +531,9 @@ class AuthController extends ControllerBase {
    */
   protected function processUserLogin(Request $request, array $userInfo, $idToken, $refreshToken, $expiresAt, $returnTo) {
     $this->auth0Logger->notice('process user login');
+
+    $event = new Auth0UserPreLoginEvent($userInfo);
+    $this->eventDispatcher->dispatch(Auth0UserPreLoginEvent::NAME, $event);
 
     try {
       $this->validateUserEmail($userInfo);
