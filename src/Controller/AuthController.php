@@ -398,6 +398,7 @@ class AuthController extends ControllerBase {
     // Check in query.
     if ($request->query->has('error')) {
       if ($request->query->get('error') == 'login_required' || 
+          $request->query->get('error') == 'interaction_required' ||
           $request->query->get('error') == 'consent_required') {
         return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
       } else {
@@ -407,6 +408,7 @@ class AuthController extends ControllerBase {
     // Check in post.
     if ($request->request->has('error')) {
       if ($request->request->get('error') == 'login_required' || 
+          $request->request->get('error') == 'interaction_required' || 
           $request->request->get('error') == 'consent_required') {
         return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
       } else {
