@@ -65,7 +65,7 @@ class BasicSettingsForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Custom Domain'),
       '#default_value' => $config->get('auth0_custom_domain') ?: '',
-      '#description' => $this->t('Your Auth0 custom domain, if in use. You can see it in the auth0 dashboard.'),
+      '#description' => $this->t('Your Auth0 custom domain, if in use.'),
       '#required' => FALSE,
     ];
 

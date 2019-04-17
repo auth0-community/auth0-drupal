@@ -392,7 +392,7 @@ class AuthController extends ControllerBase {
    *   The redirect response.
    */
   private function checkForError(Request $request, $returnTo) {
-    $error_msg = $this->t('There was a problem logging you in, sorry for the inconvenience.');
+    $error_msg = $this->t('There was a problem logging you in.');
 
     // Check for errors.
     // Check in query.
@@ -402,7 +402,7 @@ class AuthController extends ControllerBase {
           $request->query->get('error') == 'consent_required') {
         return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
       } else {
-        return $this->failLogin($error_msg . $request->query->get('error_description'), $request->query->get('error_description'));
+        return $this->failLogin($error_msg . ' ' . $request->query->get('error_description'), $request->query->get('error_description'));
       }
     }
     // Check in post.
@@ -412,7 +412,7 @@ class AuthController extends ControllerBase {
           $request->request->get('error') == 'consent_required') {
         return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
       } else {
-        return $this->failLogin($error_msg . $request->request->get('error_description'), $request->request->get('error_description')); 
+        return $this->failLogin($error_msg . ' ' . $request->request->get('error_description'), $request->request->get('error_description')); 
       }
     }
 
