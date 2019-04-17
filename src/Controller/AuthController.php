@@ -95,7 +95,7 @@ class AuthController extends ControllerBase {
    *
    * @var string|null
    */
-  protected $custom_domain;
+  protected $customDomain;
 
   /**
    * The Auth0 client id.
@@ -209,7 +209,7 @@ class AuthController extends ControllerBase {
     $this->auth0Logger = $logger_factory->get('auth0');
     $this->config = $config_factory->get('auth0.settings');
     $this->domain = $this->config->get(AuthController::AUTH0_DOMAIN);
-    $this->custom_domain = $this->config->get(AuthController::AUTH0_CUSTOM_DOMAIN);
+    $this->customDomain = $this->config->get(AuthController::AUTH0_CUSTOM_DOMAIN);
     $this->clientId = $this->config->get(AuthController::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthController::AUTH0_CLIENT_SECRET);
     $this->redirectForSso = $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
