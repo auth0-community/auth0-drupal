@@ -29,7 +29,7 @@ class AuthHelper {
   private $logger;
   private $config;
   private $domain;
-  private $custom_domain;
+  private $customDomain;
   private $clientId;
   private $clientSecret;
   private $redirectForSso;
@@ -51,7 +51,7 @@ class AuthHelper {
     $this->logger = $logger_factory->get(AuthHelper::AUTH0_LOGGER);
     $this->config = $config_factory->get('auth0.settings');
     $this->domain = $this->config->get(AuthHelper::AUTH0_DOMAIN);
-    $this->custom_domain = $this->config->get(AuthHelper::AUTH0_CUSTOM_DOMAIN);
+    $this->customDomain = $this->config->get(AuthHelper::AUTH0_CUSTOM_DOMAIN);
     $this->clientId = $this->config->get(AuthHelper::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthHelper::AUTH0_CLIENT_SECRET);
     $this->redirectForSso = $this->config->get(AuthHelper::AUTH0_REDIRECT_FOR_SSO);
@@ -130,6 +130,6 @@ class AuthHelper {
    *
    */
   public function getDomain() {
-      return isset($this->custom_domain) ? $this->custom_domain : $this->domain;
+      return isset($this->customDomain) ? $this->customDomain : $this->domain;
   }
 }
