@@ -31,6 +31,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 use Drupal\auth0\Event\Auth0UserSigninEvent;
 use Drupal\auth0\Event\Auth0UserSignupEvent;
+use Drupal\auth0\Event\Auth0UserPreLoginEvent;
 use Drupal\auth0\Exception\EmailNotSetException;
 use Drupal\auth0\Exception\EmailNotVerifiedException;
 use Drupal\Core\PageCache\ResponsePolicyInterface;
@@ -557,6 +558,9 @@ class AuthController extends ControllerBase {
   protected function processUserLogin(Request $request, array $userInfo, $idToken, $refreshToken, $expiresAt, $returnTo) {
     $this->auth0Logger->notice('process user login');
 
+    $event = new Auth0UserPreLoginEvent($userInfo);
+    $this->eventDispatcher->dispatch(Auth0UserPreLoginEvent::NAME, $event);
+
     try {
       $this->validateUserEmail($userInfo);
 
@@ -586,7 +590,7 @@ class AuthController extends ControllerBase {
 
         $event = new Auth0UserSignupEvent($user, $userInfo);
         $this->eventDispatcher->dispatch(Auth0UserSignupEvent::NAME, $event);
-      }  
+      }
     }
     catch (EmailNotSetException $e) {
       return $this->failLogin($this->t('This account does not have an email associated. Please login with a different provider.'), 'No Email Found');
@@ -721,7 +725,7 @@ class AuthController extends ControllerBase {
 
     $url = Url::fromRoute('auth0.verify_email', [], []);
     $formText = "<form style='display:none' name='auth0VerifyEmail' action=@url method='post'><input type='hidden' value=@token name='idToken'/></form>";
-    $linkText = "<a href='javascript:null' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
+    $linkText = "<a href='javascript:;' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
 
     return $this->failLogin(
       $this->t($formText . "Please verify your email and log in again. Click $linkText to Resend verification email.",

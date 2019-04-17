@@ -9,6 +9,9 @@ namespace Drupal\auth0\Util;
 
 use Auth0\SDK\JWTVerifier;
 use Auth0\SDK\API\Authentication;
+use Auth0\SDK\API\Helpers\ApiClient;
+use Auth0\SDK\API\Helpers\InformationHeaders;
+
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
@@ -60,6 +63,8 @@ class AuthHelper {
       AUTH0_DEFAULT_SIGNING_ALGORITHM
     );
     $this->secretBase64Encoded = FALSE || $this->config->get(AuthHelper::AUTH0_SECRET_ENCODED);
+
+    self::setTelemetry();
   }
 
   /**
@@ -71,8 +76,9 @@ class AuthHelper {
    * @return array
    *   A user array of named claims from the ID token.
    *
-   * @throws \Drupal\auth0\Exception\RefreshTokenFailedException
-   *   The token failure exception.
+   * @throws RefreshTokenFailedException
+   * @throws CoreException
+   * @throws InvalidTokenException
    */
   public function getUserUsingRefreshToken($refreshToken) {
     global $base_root;
@@ -132,4 +138,18 @@ class AuthHelper {
   public function getDomain() {
       return isset($this->customDomain) ? $this->customDomain : $this->domain;
   }
+
+  /**
+   *    * Extend Auth0 PHP SDK telemetry to report for Drupal.
+   */
+  public static function setTelemetry() {
+    $oldInfoHeaders = ApiClient::getInfoHeadersData();
+    if ($oldInfoHeaders) {
+      $infoHeaders = InformationHeaders::Extend($oldInfoHeaders);
+      $infoHeaders->setEnvironment('drupal', \Drupal::VERSION);
+      $infoHeaders->setPackage('auth0-drupal', AUTH0_MODULE_VERSION);
+      ApiClient::setInfoHeadersData($infoHeaders);
+    }
+  }
+
 }

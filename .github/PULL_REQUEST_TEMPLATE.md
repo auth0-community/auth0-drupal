@@ -26,3 +26,9 @@ Please describe how this can be tested by reviewers. Be specific about anything 
 
 * [ ] I have read the [Auth0 general contribution guidelines](https://github.com/auth0/open-source-template/blob/master/GENERAL-CONTRIBUTING.md)
 * [ ] I have read the [Auth0 code of conduct](https://github.com/auth0/open-source-template/blob/master/CODE-OF-CONDUCT.md)
+* [ ] I ran the PHPCS Drupal coding standards:
+
+```bash
+# Ran from the Drupal root
+$ vendor/bin/phpcs modules/auth0/src --standard=Drupal
+```
