@@ -592,7 +592,7 @@ class AuthController extends ControllerBase {
    */
   protected function failLogin($message, $logMessage) {
     $this->logger->error($logMessage);
-    drupal_set_message($message, 'error');
+    \Drupal::messenger()->addError($message;
     if ($this->auth0) {
       $this->auth0->logout();
     }
@@ -696,7 +696,7 @@ class AuthController extends ControllerBase {
     $linkText = "<a href='javascript:;' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
 
     return $this->failLogin(
-      $this->t( "@formText Please verify your email and log in again. Click @linkText to Resend verification email.",
+      $this->t("@formText Please verify your email and log in again. Click @linkText to Resend verification email.",
         [
           '@formText' => $formText,
           '@url' => $url->toString(),
@@ -1054,14 +1054,13 @@ class AuthController extends ControllerBase {
           "Authorization" => "Bearer $idToken",
         ],
       ]);
-
-      drupal_set_message($this->t('An Authorization email was sent to your account'));
+      \Drupal::messenger()->addStatus($this->t('An Authorization email was sent to your account.'));
     }
     catch (\UnexpectedValueException $e) {
-      drupal_set_message($this->t('Your session has expired.'), 'error');
+      \Drupal::messenger()->addError($this->t('Your session has expired.'));
     }
     catch (\Exception $e) {
-      drupal_set_message($this->t('Sorry, we could not send the email'), 'error');
+      \Drupal::messenger()->addError($this->t('Sorry, we could not send the email.'));
     }
 
     return new RedirectResponse('/');
