@@ -98,7 +98,7 @@ Drupal user account.
     $form['auth0_username_claim'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Map Auth0 claim to Drupal user name.'),
-      '#default_value' => $config->get('auth0_username_claim'),
+      '#default_value' => $config->get('auth0_username_claim') ?: AUTH0_DEFAULT_USERNAME_CLAIM,
       '#description' => $this->t('Maps the given claim field as the Drupal user name field. The default is the nickname claim'),
       '#required' => TRUE,
     ];

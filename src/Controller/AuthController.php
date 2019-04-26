@@ -592,7 +592,7 @@ class AuthController extends ControllerBase {
    */
   protected function failLogin($message, $logMessage) {
     $this->logger->error($logMessage);
-    \Drupal::messenger()->addError($message;
+    \Drupal::messenger()->addError($message);
     if ($this->auth0) {
       $this->auth0->logout();
     }
@@ -628,10 +628,7 @@ class AuthController extends ControllerBase {
 
     $joinUser = FALSE;
 
-    $user_name_claim = $this->config->get('auth0_username_claim');
-    if ($user_name_claim == '') {
-      $user_name_claim = 'nickname';
-    }
+    $user_name_claim = $this->config->get('auth0_username_claim') ?: AUTH0_DEFAULT_USERNAME_CLAIM;
 
     // Drupal usernames do not allow pipe characters.
     $user_name_used = !empty($userInfo[$user_name_claim])
