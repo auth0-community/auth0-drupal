@@ -71,10 +71,10 @@ class BasicAdvancedForm extends ConfigFormBase {
       '#title' => $this->t('Lock JS CDN URL'),
       '#default_value' => $config->get('auth0_widget_cdn'),
       '#description' => $this->t('Point this to the latest Lock JS version available in the CDN.') . ' ' .
-                        sprintf(
+      sprintf(
                           '<a href="https://github.com/auth0/lock/releases" target="_blank">%s</a>',
                           $this->t('Available Lock JS versions.')
-                        ),
+      ),
     ];
 
     $form['auth0_requires_verified_email'] = [
@@ -206,7 +206,7 @@ Drupal roles not listed above will not be changed by this module.
       ->set('auth0_username_claim', $form_state->getValue('auth0_username_claim'))
       ->save();
 
-    $this->messenger()->addStatus( $this->t('Saved!') );
+    $this->messenger()->addStatus($this->t('Saved!'));
   }
 
 }

@@ -294,7 +294,7 @@ class AuthController extends ControllerBase {
     return new TrustedRedirectResponse($auth0Api->get_logout_link(
       \Drupal::request()->getSchemeAndHttpHost(),
       $this->redirectForSso ? NULL : $this->clientId
-    ) );
+    ));
   }
 
   /**
@@ -696,10 +696,12 @@ class AuthController extends ControllerBase {
     $linkText = "<a href='javascript:;' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
 
     return $this->failLogin(
-      $this->t($formText . "Please verify your email and log in again. Click $linkText to Resend verification email.",
+      $this->t( "@formText Please verify your email and log in again. Click @linkText to Resend verification email.",
         [
+          '@formText' => $formText,
           '@url' => $url->toString(),
           '@token' => $idToken,
+          '@linkText' => $linkText,
         ]
     ), 'Email not verified');
   }

@@ -128,7 +128,7 @@ class BasicSettingsForm extends ConfigFormBase {
       ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
       ->save();
 
-    $this->messenger()->addStatus( $this->t('Saved!') );
+    $this->messenger()->addStatus($this->t('Saved!'));
   }
 
 }
