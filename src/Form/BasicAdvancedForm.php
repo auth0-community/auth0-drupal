@@ -56,21 +56,25 @@ class BasicAdvancedForm extends ConfigFormBase {
       '#type' => 'checkbox',
       '#title' => $this->t('Send a Refresh Token in the Signin Event for offline access'),
       '#default_value' => $config->get('auth0_allow_offline_access'),
-      '#description' => $this->t('If you need a refresh token for refreshing an expired session, set this to true, and then a refresh token will be sent in the Signin Event'),
+      '#description' => $this->t('If you need a refresh token for refreshing an expired session, set this to true, and then a refresh token will be sent in the Signin Event.'),
     ];
 
     $form['auth0_redirect_for_sso'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Redirect login for SSO'),
+      '#title' => $this->t('Universal Login Page'),
       '#default_value' => $config->get('auth0_redirect_for_sso'),
-      '#description' => $this->t('If you are supporting SSO for your customers for other apps, including this application, click this to redirect to your Auth0 Hosted Login Page for Login and Signup'),
+      '#description' => $this->t('If you are supporting SSO for your customers for other apps, including this application, click this to redirect to your Auth0 Universal Login Page for authentication.'),
     ];
 
     $form['auth0_widget_cdn'] = [
       '#type' => 'textfield',
-      '#title' => $this->t('Widget CDN'),
+      '#title' => $this->t('Lock JS CDN URL'),
       '#default_value' => $config->get('auth0_widget_cdn'),
-      '#description' => $this->t('Point this to the latest widget available in the CDN.'),
+      '#description' => $this->t('Point this to the latest Lock JS version available in the CDN.') . ' ' .
+                        sprintf(
+                          '<a href="https://github.com/auth0/lock/releases" target="_blank">%s</a>',
+                          $this->t('Available Lock JS versions.')
+                        ),
     ];
 
     $form['auth0_requires_verified_email'] = [
@@ -96,7 +100,7 @@ Drupal user account.
     $form['auth0_username_claim'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Map Auth0 claim to Drupal user name.'),
-      '#default_value' => !empty($username_claim) ? $username_claim : AUTH0_DEFAULT_USERNAME_CLAIM,
+      '#default_value' => $config->get('auth0_username_claim'),
       '#description' => $this->t('Maps the given claim field as the Drupal user name field. The default is the nickname claim'),
     ];
 

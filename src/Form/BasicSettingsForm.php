@@ -39,10 +39,18 @@ class BasicSettingsForm extends ConfigFormBase {
 
     $config = $this->configFactory()->get('auth0.settings');
 
+    $form['auth0_domain'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Domain'),
+      '#default_value' => $config->get('auth0_domain'),
+      '#description' => $this->t('The Auth0 Domain for this Application, found in the Auth0 Dashboard.'),
+      '#required' => TRUE,
+    ];
+
     $form['auth0_client_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Client ID'),
-      '#default_value' => $config->get('auth0_client_id') ?: '',
+      '#default_value' => $config->get('auth0_client_id'),
       '#description' => $this->t('Client ID from the Application settings page in your Auth0 dashboard.'),
       '#required' => TRUE,
     ];
@@ -50,7 +58,7 @@ class BasicSettingsForm extends ConfigFormBase {
     $form['auth0_client_secret'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Client Secret'),
-      '#default_value' => $config->get('auth0_client_secret') ?: '',
+      '#default_value' => $config->get('auth0_client_secret'),
       '#description' => $this->t('Client Secret from the Application settings page in your Auth0 dashboard.'),
       '#required' => TRUE,
     ];
@@ -58,16 +66,8 @@ class BasicSettingsForm extends ConfigFormBase {
     $form['auth0_secret_base64_encoded'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Client Secret is base64 Encoded'),
-      '#default_value' => $config->get('auth0_secret_base64_encoded') ?: FALSE,
+      '#default_value' => $config->get('auth0_secret_base64_encoded'),
       '#description' => $this->t('This is stated below the Client Secret field on the Application settings page in your Auth0 dashboard.'),
-    ];
-
-    $form['auth0_domain'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Domain'),
-      '#default_value' => $config->get('auth0_domain') ?: '',
-      '#description' => $this->t('The Auth0 Domain for this Application, found in the Auth0 Dashboard.'),
-      '#required' => TRUE,
     ];
 
     $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = [
@@ -77,8 +77,7 @@ class BasicSettingsForm extends ConfigFormBase {
         'HS256' => $this->t('HS256'),
         'RS256' => $this->t('RS256'),
       ],
-      '#default_value' => $config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM)
-      ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
+      '#default_value' => $config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM) ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
       '#description' => $this->t('Your JWT Signing Algorithm for the ID token. RS256 is recommended and must be set in the advanced settings for this client under the OAuth tab.'),
       '#required' => TRUE,
     ];
