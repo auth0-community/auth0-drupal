@@ -7,20 +7,29 @@ namespace Drupal\auth0\Form;
  * Contains \Drupal\auth0\Form\BasicSettingsForm.
  */
 
-use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\auth0\Util\AuthHelper;
 
 /**
  * This forms handles the basic module configurations.
  */
-class BasicSettingsForm extends FormBase {
+class BasicSettingsForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
    */
   public function getFormId() {
     return 'auth0_basic_settings_form';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getEditableConfigNames() {
+    return [
+      'auth0.settings',
+    ];
   }
 
   /**
@@ -119,6 +128,8 @@ class BasicSettingsForm extends FormBase {
       ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
       ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
       ->save();
+
+    $this->messenger()->addStatus( $this->t('Saved!') );
   }
 
 }

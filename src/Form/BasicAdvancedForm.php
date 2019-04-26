@@ -7,19 +7,28 @@ namespace Drupal\auth0\Form;
  * Contains \Drupal\auth0\Form\BasicAdvancedForm.
  */
 
-use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
  * This forms handles the advanced module configurations.
  */
-class BasicAdvancedForm extends FormBase {
+class BasicAdvancedForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
    */
   public function getFormId() {
     return 'auth0_basic_settings_form';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getEditableConfigNames() {
+    return [
+      'auth0.settings',
+    ];
   }
 
   /**
@@ -193,6 +202,8 @@ Drupal roles not listed above will not be changed by this module.
       ->set('auth0_role_mapping', $form_state->getValue('auth0_role_mapping'))
       ->set('auth0_username_claim', $form_state->getValue('auth0_username_claim'))
       ->save();
+
+    $this->messenger()->addStatus( $this->t('Saved!') );
   }
 
 }
