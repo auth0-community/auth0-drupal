@@ -149,7 +149,7 @@ class AuthHelper {
    *
    */
   public function getDomain() {
-      return isset($this->customDomain) ? $this->customDomain : $this->domain;
+      return !empty($this->customDomain) ? $this->customDomain : $this->domain;
   }
 
 }
