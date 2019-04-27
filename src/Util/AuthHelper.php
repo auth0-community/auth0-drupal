@@ -152,4 +152,18 @@ class AuthHelper {
       return !empty($this->customDomain) ? $this->customDomain : $this->domain;
   }
 
+  /**
+   * Get the tenant region based on a domain.
+   *
+   * @param string $domain Tenant domain.
+   *
+   * @return string
+   */
+  public static function get_tenant_cdn( $domain ) {
+    preg_match( '/^[\w\d\-_0-9]+\.([\w\d\-_0-9]*)[\.]*auth0\.com$/', $domain, $matches );
+    return 'https://cdn' . 
+      ( empty( $matches[1]) || $matches[1] == 'us' ? '' : '.' . $matches[1] ) 
+      . '.auth0.com';
+  }  
+
 }

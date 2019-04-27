@@ -273,7 +273,7 @@ class AuthController extends ControllerBase {
             'clientId' => $this->config->get('auth0_client_id'),
             'domain' => $this->helper->getDomain(),
             'lockExtraSettings' => $lockExtraSettings,
-            'configurationBaseUrl' => 'https://cdn.auth0.com',
+            'configurationBaseUrl' => $this->helper->get_tenant_cdn($this->config->get('auth0_domain')),
             'showSignup' => $this->config->get('auth0_allow_signup'),
             'callbackURL' => "$base_root/auth0/callback",
             'state' => $this->getNonce($returnTo),
