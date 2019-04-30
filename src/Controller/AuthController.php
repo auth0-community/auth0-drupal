@@ -253,18 +253,11 @@ class AuthController extends ControllerBase {
       $lockExtraSettings = "{}";
     }
 
-    $returnTo = NULL;
-    if ($request->request->has('returnTo')) {
-      $returnTo = $request->request->get('returnTo');
-    }
-    elseif ($request->query->has('returnTo')) {
-      $returnTo = $request->query->get('returnTo');
-    }
+    $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
 
     // If supporting SSO, redirect to the hosted login page for authorization.
     if ($this->redirectForSso) {
-      $prompt = 'none';
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl($prompt, $returnTo));
+      return new TrustedRedirectResponse($this->buildAuthorizeUrl(NULL, $returnTo));
     }
 
     /* Not doing SSO, so show login page */
@@ -280,7 +273,7 @@ class AuthController extends ControllerBase {
             'clientId' => $this->config->get('auth0_client_id'),
             'domain' => $this->helper->getDomain(),
             'lockExtraSettings' => $lockExtraSettings,
-            'configurationBaseUrl' => 'https://cdn.auth0.com',
+            'configurationBaseUrl' => $this->helper->get_tenant_cdn($this->config->get('auth0_domain')),
             'showSignup' => $this->config->get('auth0_allow_signup'),
             'callbackURL' => "$base_root/auth0/callback",
             'state' => $this->getNonce($returnTo),
@@ -310,9 +303,9 @@ class AuthController extends ControllerBase {
     // If we are using SSO, we need to logout completely from Auth0,
     // otherwise they will just logout of their client.
     return new TrustedRedirectResponse($auth0Api->get_logout_link(
-        $base_root,
-        $this->redirectForSso ? NULL : $this->clientId)
-    );
+      \Drupal::request()->getSchemeAndHttpHost(),
+      $this->redirectForSso ? NULL : $this->clientId
+    ) );
   }
 
   /**
@@ -397,7 +390,7 @@ class AuthController extends ControllerBase {
     // Check for errors.
     // Check in query.
     if ($request->query->has('error')) {
-      if ($request->query->get('error') == 'login_required' || 
+      if ($request->query->get('error') == 'login_required' ||
           $request->query->get('error') == 'interaction_required' ||
           $request->query->get('error') == 'consent_required') {
         return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
@@ -407,12 +400,12 @@ class AuthController extends ControllerBase {
     }
     // Check in post.
     if ($request->request->has('error')) {
-      if ($request->request->get('error') == 'login_required' || 
-          $request->request->get('error') == 'interaction_required' || 
+      if ($request->request->get('error') == 'login_required' ||
+          $request->request->get('error') == 'interaction_required' ||
           $request->request->get('error') == 'consent_required') {
         return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
       } else {
-        return $this->failLogin($error_msg . ' ' . $request->request->get('error_description'), $request->request->get('error_description')); 
+        return $this->failLogin($error_msg . ' ' . $request->request->get('error_description'), $request->request->get('error_description'));
       }
     }
 
@@ -435,9 +428,7 @@ class AuthController extends ControllerBase {
     global $base_root;
     $problem_logging_in_msg = $this->t('There was a problem logging you in, sorry for the inconvenience.');
 
-    $returnTo = NULL;
-    $response = $this->checkForError($request, $returnTo);
-
+    $response = $this->checkForError($request, NULL);
     if ($response !== NULL) {
       return $response;
     }
@@ -448,11 +439,7 @@ class AuthController extends ControllerBase {
       'client_id'     => $this->clientId,
       'client_secret' => $this->clientSecret,
       'redirect_uri'  => "$base_root/auth0/callback",
-      'store' => NULL,
-      'persist_id_token' => FALSE,
       'persist_user' => FALSE,
-      'persist_access_token' => FALSE,
-      'persist_refresh_token' => FALSE,
     ]);
 
     $userInfo = NULL;
@@ -485,6 +472,15 @@ class AuthController extends ControllerBase {
     }
     catch (\Exception $e) {
       return $this->failLogin($problem_logging_in_msg, $this->t('Failed to validate JWT: @exception', ['@exception' => $e->getMessage()]));
+    }
+
+    // State value is validated in $this->auth0->getUser() above.
+    $returnTo = NULL;
+    $validatedState = $request->query->get('state');
+    $currentSession = $this->tempStore->get(AuthController::STATE);
+    if (!empty($currentSession[$validatedState])) {
+      $returnTo = $currentSession[$validatedState];
+      unset($currentSession[$validatedState]);
     }
 
     if ($userInfo) {
@@ -600,7 +596,7 @@ class AuthController extends ControllerBase {
 
     user_login_finalize($user);
 
-    if ($returnTo !== NULL && strlen($returnTo) > 0 && $returnTo[0] === '/') {
+    if ($returnTo) {
       return new RedirectResponse($returnTo);
     }
     elseif ($request->request->has('destination')) {
@@ -647,7 +643,7 @@ class AuthController extends ControllerBase {
    */
   protected function signupUser(array $userInfo, $idToken = '') {
     // If the user doesn't exist we need to either create a new one,
-    // or assign him to an existing one.
+    // or assign them to an existing one.
     $isDatabaseUser = FALSE;
 
     $user_sub_arr = explode('|', $userInfo['user_id']);
@@ -1050,6 +1046,7 @@ class AuthController extends ControllerBase {
    * @throws \Auth0\SDK\Exception\CoreException
    *   Exception thrown when validating email.
    */
+  // phpcs:ignore
   public function verify_email(Request $request) {
     $idToken = $request->get('idToken');
 
