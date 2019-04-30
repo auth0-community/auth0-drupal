@@ -273,7 +273,7 @@ class AuthController extends ControllerBase {
             'clientId' => $this->config->get('auth0_client_id'),
             'domain' => $this->helper->getDomain(),
             'lockExtraSettings' => $lockExtraSettings,
-            'configurationBaseUrl' => $this->helper->get_tenant_cdn($this->config->get('auth0_domain')),
+            'configurationBaseUrl' => $this->helper->getTenantCdn($this->config->get('auth0_domain')),
             'showSignup' => $this->config->get('auth0_allow_signup'),
             'callbackURL' => "$base_root/auth0/callback",
             'state' => $this->getNonce($returnTo),
@@ -379,18 +379,24 @@ class AuthController extends ControllerBase {
    * @param string $returnTo
    *   The return url.
    *
-   * @return TrustedRedirectResponse|RedirectResponse|null
+   * @return \Drupal\Core\Routing\TrustedRedirectResponse|RedirectResponse|null
    *   The redirect response.
    */
   private function checkForError(Request $request, $returnTo) {
     $error_msg = $this->t('There was a problem logging you in.');
 
     // Check for errors.
-    $error_code = $request->query->get('error', $request->request->get('error') );
-    if ( $error_code && in_array( $error_code, ['login_required', 'interaction_required', 'consent_required'] ) ) {
-      return new TrustedRedirectResponse( $this->buildAuthorizeUrl( FALSE, $returnTo ) );
-    } else if ( $error_code ) {
-      $error_desc = $request->query->get('error_description', $request->request->get( 'error_description', $error_code ) );
+    $error_code = $request->query->get('error', $request->request->get('error'));
+    $redirect_errors = [
+      'login_required',
+      'interaction_required',
+      'consent_required',
+    ];
+    if ($error_code && in_array($error_code, $redirect_errors)) {
+      return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
+    }
+    elseif ($error_code) {
+      $error_desc = $request->query->get('error_description', $request->request->get('error_description', $error_code));
       return $this->failLogin($error_msg . $error_desc, $error_desc);
     }
 

@@ -126,21 +126,18 @@ class AuthHelper {
   }
 
   /**
-   * Return the Domain
-   *
-   * @param none
+   * Return the Domain.
    *
    * @return mixed
    *   A string with the domain name
    *   A empty string if the config is not set
-   *
    */
   public function getDomain() {
-      return isset($this->customDomain) ? $this->customDomain : $this->domain;
+    return isset($this->customDomain) ? $this->customDomain : $this->domain;
   }
 
   /**
-   *    * Extend Auth0 PHP SDK telemetry to report for Drupal.
+   * Extend Auth0 PHP SDK telemetry to report for Drupal.
    */
   public static function setTelemetry() {
     $oldInfoHeaders = ApiClient::getInfoHeadersData();
@@ -153,31 +150,19 @@ class AuthHelper {
   }
 
   /**
-   * Return the Domain
+   * Get the tenant CDN base URL based on the Application domain.
    *
-   * @param none
-   *
-   * @return mixed
-   *   A string with the domain name
-   *   A empty string if the config is not set
-   *
-   */
-  public function getDomain() {
-      return !empty($this->customDomain) ? $this->customDomain : $this->domain;
-  }
-
-  /**
-   * Get the tenant region based on a domain.
-   *
-   * @param string $domain Tenant domain.
+   * @param string $domain
+   *   Tenant domain.
    *
    * @return string
+   *   Tenant CDN base URL
    */
-  public static function get_tenant_cdn( $domain ) {
-    preg_match( '/^[\w\d\-_0-9]+\.([\w\d\-_0-9]*)[\.]*auth0\.com$/', $domain, $matches );
-    return 'https://cdn' . 
-      ( empty( $matches[1]) || $matches[1] == 'us' ? '' : '.' . $matches[1] ) 
+  public static function getTenantCdn($domain) {
+    preg_match('/^[\w\d\-_0-9]+\.([\w\d\-_0-9]*)[\.]*auth0\.com$/', $domain, $matches);
+    return 'https://cdn' .
+      (empty($matches[1]) || $matches[1] == 'us' ? '' : '.' . $matches[1])
       . '.auth0.com';
-  }  
+  }
 
 }
