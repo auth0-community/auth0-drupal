@@ -305,7 +305,7 @@ class AuthController extends ControllerBase {
     return new TrustedRedirectResponse($auth0Api->get_logout_link(
       \Drupal::request()->getSchemeAndHttpHost(),
       $this->redirectForSso ? NULL : $this->clientId
-    ) );
+    ));
   }
 
   /**
@@ -379,34 +379,19 @@ class AuthController extends ControllerBase {
    * @param string $returnTo
    *   The return url.
    *
-   * @return \Drupal\Core\Routing\TrustedRedirectResponse
-   *         \Symfony\Component\HttpFoundation\RedirectResponse
-   *         null
+   * @return TrustedRedirectResponse|RedirectResponse|null
    *   The redirect response.
    */
   private function checkForError(Request $request, $returnTo) {
     $error_msg = $this->t('There was a problem logging you in.');
 
     // Check for errors.
-    // Check in query.
-    if ($request->query->has('error')) {
-      if ($request->query->get('error') == 'login_required' ||
-          $request->query->get('error') == 'interaction_required' ||
-          $request->query->get('error') == 'consent_required') {
-        return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
-      } else {
-        return $this->failLogin($error_msg . ' ' . $request->query->get('error_description'), $request->query->get('error_description'));
-      }
-    }
-    // Check in post.
-    if ($request->request->has('error')) {
-      if ($request->request->get('error') == 'login_required' ||
-          $request->request->get('error') == 'interaction_required' ||
-          $request->request->get('error') == 'consent_required') {
-        return new TrustedRedirectResponse($this->buildAuthorizeUrl(FALSE, $returnTo));
-      } else {
-        return $this->failLogin($error_msg . ' ' . $request->request->get('error_description'), $request->request->get('error_description'));
-      }
+    $error_code = $request->query->get('error', $request->request->get('error') );
+    if ( $error_code && in_array( $error_code, ['login_required', 'interaction_required', 'consent_required'] ) ) {
+      return new TrustedRedirectResponse( $this->buildAuthorizeUrl( FALSE, $returnTo ) );
+    } else if ( $error_code ) {
+      $error_desc = $request->query->get('error_description', $request->request->get( 'error_description', $error_code ) );
+      return $this->failLogin($error_msg . $error_desc, $error_desc);
     }
 
     return NULL;
@@ -619,7 +604,7 @@ class AuthController extends ControllerBase {
    */
   protected function failLogin($message, $logMessage) {
     $this->logger->error($logMessage);
-    drupal_set_message($message, 'error');
+    \Drupal::messenger()->addError($message);
     if ($this->auth0) {
       $this->auth0->logout();
     }
@@ -655,10 +640,7 @@ class AuthController extends ControllerBase {
 
     $joinUser = FALSE;
 
-    $user_name_claim = $this->config->get('auth0_username_claim');
-    if ($user_name_claim == '') {
-      $user_name_claim = 'nickname';
-    }
+    $user_name_claim = $this->config->get('auth0_username_claim') ?: AUTH0_DEFAULT_USERNAME_CLAIM;
 
     // Drupal usernames do not allow pipe characters.
     $user_name_used = !empty($userInfo[$user_name_claim])
@@ -723,10 +705,12 @@ class AuthController extends ControllerBase {
     $linkText = "<a href='javascript:;' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
 
     return $this->failLogin(
-      $this->t($formText . "Please verify your email and log in again. Click $linkText to Resend verification email.",
+      $this->t("@formText Please verify your email and log in again. Click @linkText to Resend verification email.",
         [
+          '@formText' => $formText,
           '@url' => $url->toString(),
           '@token' => $idToken,
+          '@linkText' => $linkText,
         ]
     ), 'Email not verified');
   }
@@ -1079,14 +1063,13 @@ class AuthController extends ControllerBase {
           "Authorization" => "Bearer $idToken",
         ],
       ]);
-
-      drupal_set_message($this->t('An Authorization email was sent to your account'));
+      \Drupal::messenger()->addStatus($this->t('An Authorization email was sent to your account.'));
     }
     catch (\UnexpectedValueException $e) {
-      drupal_set_message($this->t('Your session has expired.'), 'error');
+      \Drupal::messenger()->addError($this->t('Your session has expired.'));
     }
     catch (\Exception $e) {
-      drupal_set_message($this->t('Sorry, we could not send the email'), 'error');
+      \Drupal::messenger()->addError($this->t('Sorry, we could not send the email.'));
     }
 
     return new RedirectResponse('/');

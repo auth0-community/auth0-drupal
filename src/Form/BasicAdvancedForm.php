@@ -7,19 +7,28 @@ namespace Drupal\auth0\Form;
  * Contains \Drupal\auth0\Form\BasicAdvancedForm.
  */
 
-use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
  * This forms handles the advanced module configurations.
  */
-class BasicAdvancedForm extends FormBase {
+class BasicAdvancedForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
    */
   public function getFormId() {
     return 'auth0_basic_settings_form';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getEditableConfigNames() {
+    return [
+      'auth0.settings',
+    ];
   }
 
   /**
@@ -47,21 +56,25 @@ class BasicAdvancedForm extends FormBase {
       '#type' => 'checkbox',
       '#title' => $this->t('Send a Refresh Token in the Signin Event for offline access'),
       '#default_value' => $config->get('auth0_allow_offline_access'),
-      '#description' => $this->t('If you need a refresh token for refreshing an expired session, set this to true, and then a refresh token will be sent in the Signin Event'),
+      '#description' => $this->t('If you need a refresh token for refreshing an expired session, set this to true, and then a refresh token will be sent in the Signin Event.'),
     ];
 
     $form['auth0_redirect_for_sso'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Redirect login for SSO'),
+      '#title' => $this->t('Universal Login Page'),
       '#default_value' => $config->get('auth0_redirect_for_sso'),
-      '#description' => $this->t('If you are supporting SSO for your customers for other apps, including this application, click this to redirect to your Auth0 Hosted Login Page for Login and Signup'),
+      '#description' => $this->t('If you are supporting SSO for your customers for other apps, including this application, click this to redirect to your Auth0 Universal Login Page for authentication.'),
     ];
 
     $form['auth0_widget_cdn'] = [
       '#type' => 'textfield',
-      '#title' => $this->t('Widget CDN'),
+      '#title' => $this->t('Lock JS CDN URL'),
       '#default_value' => $config->get('auth0_widget_cdn'),
-      '#description' => $this->t('Point this to the latest widget available in the CDN.'),
+      '#description' => $this->t('Point this to the latest Lock JS version available in the CDN.') . ' ' .
+      sprintf(
+                          '<a href="https://github.com/auth0/lock/releases" target="_blank">%s</a>',
+                          $this->t('Available Lock JS versions.')
+      ),
     ];
 
     $form['auth0_requires_verified_email'] = [
@@ -82,13 +95,12 @@ Drupal user account.
 '),
     ];
 
-    $username_claim = $config->get('auth0_username_claim');
-
     $form['auth0_username_claim'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Map Auth0 claim to Drupal user name.'),
-      '#default_value' => !empty($username_claim) ? $username_claim : AUTH0_DEFAULT_USERNAME_CLAIM,
+      '#default_value' => $config->get('auth0_username_claim') ?: AUTH0_DEFAULT_USERNAME_CLAIM,
       '#description' => $this->t('Maps the given claim field as the Drupal user name field. The default is the nickname claim'),
+      '#required' => TRUE,
     ];
 
     $form['auth0_login_css'] = [
@@ -193,6 +205,8 @@ Drupal roles not listed above will not be changed by this module.
       ->set('auth0_role_mapping', $form_state->getValue('auth0_role_mapping'))
       ->set('auth0_username_claim', $form_state->getValue('auth0_username_claim'))
       ->save();
+
+    $this->messenger()->addStatus($this->t('Saved!'));
   }
 
 }

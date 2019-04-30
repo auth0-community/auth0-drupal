@@ -7,14 +7,14 @@ namespace Drupal\auth0\Form;
  * Contains \Drupal\auth0\Form\BasicSettingsForm.
  */
 
-use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\auth0\Util\AuthHelper;
 
 /**
  * This forms handles the basic module configurations.
  */
-class BasicSettingsForm extends FormBase {
+class BasicSettingsForm extends ConfigFormBase {
 
   /**
    * {@inheritdoc}
@@ -26,37 +26,23 @@ class BasicSettingsForm extends FormBase {
   /**
    * {@inheritdoc}
    */
+  protected function getEditableConfigNames() {
+    return [
+      'auth0.settings',
+    ];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function buildForm(array $form, FormStateInterface $form_state) {
 
     $config = $this->configFactory()->get('auth0.settings');
 
-    $form['auth0_client_id'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Client ID'),
-      '#default_value' => $config->get('auth0_client_id') ?: '',
-      '#description' => $this->t('Client ID from the Application settings page in your Auth0 dashboard.'),
-      '#required' => TRUE,
-    ];
-
-    $form['auth0_client_secret'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Client Secret'),
-      '#default_value' => $config->get('auth0_client_secret') ?: '',
-      '#description' => $this->t('Client Secret from the Application settings page in your Auth0 dashboard.'),
-      '#required' => TRUE,
-    ];
-
-    $form['auth0_secret_base64_encoded'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Client Secret is base64 Encoded'),
-      '#default_value' => $config->get('auth0_secret_base64_encoded') ?: FALSE,
-      '#description' => $this->t('This is stated below the Client Secret field on the Application settings page in your Auth0 dashboard.'),
-    ];
-
     $form['auth0_domain'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Domain'),
-      '#default_value' => $config->get('auth0_domain') ?: '',
+      '#default_value' => $config->get('auth0_domain'),
       '#description' => $this->t('The Auth0 Domain for this Application, found in the Auth0 Dashboard.'),
       '#required' => TRUE,
     ];
@@ -69,6 +55,29 @@ class BasicSettingsForm extends FormBase {
       '#required' => FALSE,
     ];
 
+    $form['auth0_client_id'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Client ID'),
+      '#default_value' => $config->get('auth0_client_id'),
+      '#description' => $this->t('Client ID from the Application settings page in your Auth0 dashboard.'),
+      '#required' => TRUE,
+    ];
+
+    $form['auth0_client_secret'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Client Secret'),
+      '#default_value' => $config->get('auth0_client_secret'),
+      '#description' => $this->t('Client Secret from the Application settings page in your Auth0 dashboard.'),
+      '#required' => TRUE,
+    ];
+
+    $form['auth0_secret_base64_encoded'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Client Secret is base64 Encoded'),
+      '#default_value' => $config->get('auth0_secret_base64_encoded'),
+      '#description' => $this->t('This is stated below the Client Secret field on the Application settings page in your Auth0 dashboard.'),
+    ];
+
     $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = [
       '#type' => 'select',
       '#title' => $this->t('JsonWebToken Signature Algorithm'),
@@ -76,8 +85,7 @@ class BasicSettingsForm extends FormBase {
         'HS256' => $this->t('HS256'),
         'RS256' => $this->t('RS256'),
       ],
-      '#default_value' => $config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM)
-      ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
+      '#default_value' => $config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM) ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
       '#description' => $this->t('Your JWT Signing Algorithm for the ID token. RS256 is recommended and must be set in the advanced settings for this client under the OAuth tab.'),
       '#required' => TRUE,
     ];
@@ -128,6 +136,8 @@ class BasicSettingsForm extends FormBase {
       ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
       ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
       ->save();
+
+    $this->messenger()->addStatus($this->t('Saved!'));
   }
 
 }
