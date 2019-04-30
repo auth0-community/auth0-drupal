@@ -6,6 +6,11 @@
     "require": {
         "auth0/auth0-php": "^5.1"
     },
+    "scripts": {
+        "phpcs": "\"../../../vendor/bin/phpcs\" --standard=Drupal src",
+        "phpcbf": "\"../../../vendor/bin/phpcbf\" --standard=Drupal src",
+        "cr": "\"../../../vendor/bin/drush\" cr"
+    },
     "authors": [
         {
             "name": "German Lena",

@@ -83,7 +83,7 @@ class AuthHelper {
   public function getUserUsingRefreshToken($refreshToken) {
     global $base_root;
 
-    $auth0Api = new Authentication($this->getDomain(), $this->clientId, $this->clientSecret);
+    $auth0Api = new Authentication($this->getAuthDomain(), $this->clientId, $this->clientSecret);
 
     try {
       $tokens = $auth0Api->oauth_token([
@@ -114,7 +114,7 @@ class AuthHelper {
    * @throws \Exception
    */
   public function validateIdToken($idToken) {
-    $auth0_domain = 'https://' . $this->getDomain() . '/';
+    $auth0_domain = 'https://' . $this->getAuthDomain() . '/';
     $auth0_settings = [];
     $auth0_settings['authorized_iss'] = [$auth0_domain];
     $auth0_settings['supported_algs'] = [$this->auth0JwtSignatureAlg];
@@ -123,17 +123,6 @@ class AuthHelper {
     $auth0_settings['secret_base64_encoded'] = $this->secretBase64Encoded;
     $jwt_verifier = new JWTVerifier($auth0_settings);
     return $jwt_verifier->verifyAndDecode($idToken);
-  }
-
-  /**
-   * Return the Domain.
-   *
-   * @return mixed
-   *   A string with the domain name
-   *   A empty string if the config is not set
-   */
-  public function getDomain() {
-    return isset($this->customDomain) ? $this->customDomain : $this->domain;
   }
 
   /**
@@ -147,6 +136,17 @@ class AuthHelper {
       $infoHeaders->setPackage('auth0-drupal', AUTH0_MODULE_VERSION);
       ApiClient::setInfoHeadersData($infoHeaders);
     }
+  }
+
+  /**
+   * Return the custom domain, if one has been set.
+   *
+   * @return mixed
+   *   A string with the domain name
+   *   A empty string if the config is not set
+   */
+  public function getAuthDomain() {
+    return !empty($this->customDomain) ? $this->customDomain : $this->domain;
   }
 
   /**
