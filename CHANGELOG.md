@@ -1,5 +1,31 @@
 # Change Log
 
+## [8.x-2.2](https://github.com/auth0/wp-auth0/tree/8.x-2.2) (2019-05-10)
+[Full Changelog](https://github.com/auth0/wp-auth0/compare/8.x-2.1...8.x-2.2)
+
+**Closed issues**
+- Failed to exchange code for tokens: Invalid state [\#139](https://github.com/auth0/auth0-drupal/issues/139)
+- Issue with returnTo/state post callback [\#136](https://github.com/auth0/auth0-drupal/issues/136)
+- Invalid token [\#130](https://github.com/auth0/auth0-drupal/issues/130)
+- drupal jwt  [\#128](https://github.com/auth0/auth0-drupal/issues/128)
+- Resend verification link leads to blank page [\#126](https://github.com/auth0/auth0-drupal/issues/126)
+- How to set user roles based on app_metadata? [\#123](https://github.com/auth0/auth0-drupal/issues/123)
+- What happens if exception happens in Drupal? [\#118](https://github.com/auth0/auth0-drupal/issues/118)
+- Fix settings form pages [\#93](https://github.com/auth0/auth0-drupal/issues/93)
+
+**Added**
+- add/port prelogin event [\#132](https://github.com/auth0/auth0-drupal/pull/132) ([edysmp](https://github.com/edysmp))
+- Send correct telemetry for Drupal [\#131](https://github.com/auth0/auth0-drupal/pull/131) ([joshcanhelp](https://github.com/joshcanhelp))
+- Add custom domain setting and add new callback error checking [\#125](https://github.com/auth0/auth0-drupal/pull/125) ([identitysolutions](https://github.com/identitysolutions))
+
+**Changed**
+- Settings page cleanup [\#138](https://github.com/auth0/auth0-drupal/pull/138) ([joshcanhelp](https://github.com/joshcanhelp))
+
+**Fixed**
+- Fix redirectTo URL parameter [\#137](https://github.com/auth0/auth0-drupal/pull/137) ([joshcanhelp](https://github.com/joshcanhelp))
+- Fix inline JavaScript causing resend link not to work [\#129](https://github.com/auth0/auth0-drupal/pull/129) ([joshcanhelp](https://github.com/joshcanhelp))
+- De-Duped EmailNotVerifiedException in AuthController::processUserLogin [\#117](https://github.com/auth0/auth0-drupal/pull/117) ([mptap](https://github.com/mptap))
+
 ## [8.x-2.1](https://github.com/auth0/wp-auth0/tree/8.x-2.1) (2018-09-28)
 [Full Changelog](https://github.com/auth0/wp-auth0/compare/2.0.3...8.x-2.1)
 
