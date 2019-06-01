@@ -866,7 +866,7 @@ class AuthController extends ControllerBase {
 
       $new_user_roles = array_merge(array_diff($user_roles, $not_granted), $roles_granted);
 
-      $tmp = array_diff($new_user_roles, $user_roles);
+      $tmp = array_merge(array_diff($user_roles, $new_user_roles), array_diff($new_user_roles, $user_roles));
       if (empty($tmp)) {
         $this->auth0Logger->notice('no changes to roles detected');
       }
