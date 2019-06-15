@@ -865,20 +865,22 @@ class AuthController extends ControllerBase {
       $user_roles = $user->getRoles();
 
       $new_user_roles = array_merge(array_diff($user_roles, $not_granted), $roles_granted);
-
-      $tmp = array_merge(array_diff($user_roles, $new_user_roles), array_diff($new_user_roles, $user_roles));
-      if (empty($tmp)) {
-        $this->auth0Logger->notice('no changes to roles detected');
-      }
-      else {
-        $this->auth0Logger->notice('changes to roles detected');
-        $edit['roles'] = $new_user_roles;
-        foreach (array_diff($new_user_roles, $user_roles) as $new_role) {
-          $user->addRole($new_role);
-        }
-        foreach (array_diff($user_roles, $new_user_roles) as $remove_role) {
-          $user->removeRole($remove_role);
-        }
+      
+      $roles_to_add = array_diff($new_user_roles, $user_roles);
+      $roles_to_remove = array_diff($user_roles, $new_user_roles);
+      
+      if (empty($roles_to_add) && empty($roles_to_remove)) {
+          $this->auth0Logger->notice('no changes to roles detected');
+          return;
+      } else {
+         $this->auth0Logger->notice('changes to roles detected');
+         $edit['roles'] = $new_user_roles;
+         foreach ($roles_to_add as $new_role) {
+           $user->addRole($new_role);
+         }
+         foreach ($roles_to_remove as $remove_role) {
+           $user->removeRole($remove_role);
+         }
       }
     }
   }
