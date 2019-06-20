@@ -872,15 +872,16 @@ class AuthController extends ControllerBase {
       if (empty($roles_to_add) && empty($roles_to_remove)) {
           $this->auth0Logger->notice('no changes to roles detected');
           return;
-      } else {
-         $this->auth0Logger->notice('changes to roles detected');
-         $edit['roles'] = $new_user_roles;
-         foreach ($roles_to_add as $new_role) {
-           $user->addRole($new_role);
-         }
-         foreach ($roles_to_remove as $remove_role) {
-           $user->removeRole($remove_role);
-         }
+      } 
+         
+      $this->auth0Logger->notice('changes to roles detected');
+      $edit['roles'] = $new_user_roles;
+      
+      foreach ($roles_to_add as $new_role) {
+          $user->addRole($new_role);
+      }
+      foreach ($roles_to_remove as $remove_role) {
+          $user->removeRole($remove_role);
       }
     }
   }
