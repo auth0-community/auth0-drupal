@@ -23,6 +23,7 @@ use Drupal\Core\Session\SessionManagerInterface;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Render\Markup;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -608,8 +609,8 @@ class AuthController extends ControllerBase {
    *   The redirect response after fail.
    */
   protected function failLogin($message, $logMessage) {
-    $this->logger->error($logMessage);
     \Drupal::messenger()->addError($message);
+    $this->logger->error($logMessage);
     if ($this->auth0) {
       $this->auth0->logout();
     }
@@ -705,19 +706,19 @@ class AuthController extends ControllerBase {
    */
   protected function auth0FailWithVerifyEmail($idToken) {
 
-    $url = Url::fromRoute('auth0.verify_email', [], []);
-    $formText = "<form style='display:none' name='auth0VerifyEmail' action=@url method='post'><input type='hidden' value=@token name='idToken'/></form>";
-    $linkText = "<a href='javascript:;' onClick='document.forms[\"auth0VerifyEmail\"].submit();'>here</a>";
+    $messageHtml = sprintf('
+      <p>%s.</p>
+      <form name="auth0VerifyEmail" action="%s">
+        <input type="hidden" value="%s" name="idToken" />
+        <input type="submit" value="%s" class="button" />
+      </form>',
+      $this->t('Please verify your email and log in again'),
+      Url::fromRoute('auth0.verify_email', [], [])->toString(),
+      $idToken,
+      $this->t('Resend verification')
+    );
 
-    return $this->failLogin(
-      $this->t("@formText Please verify your email and log in again. Click @linkText to Resend verification email.",
-        [
-          '@formText' => $formText,
-          '@url' => $url->toString(),
-          '@token' => $idToken,
-          '@linkText' => $linkText,
-        ]
-    ), 'Email not verified');
+    return $this->failLogin(Markup::create($messageHtml), 'Email not verified');
   }
 
   /**
