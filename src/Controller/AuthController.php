@@ -319,7 +319,7 @@ class AuthController extends ControllerBase {
     // we don't actually start it!
     if (!$this->sessionManager->isStarted() && !isset($_SESSION['auth0_is_session_started'])) {
       $_SESSION['auth0_is_session_started'] = 'yes';
-      $this->sessionManager->start();
+      $this->sessionManager->regenerate();
     }
 
     $sessionStateHandler = new SessionStateHandler(new SessionStore());
