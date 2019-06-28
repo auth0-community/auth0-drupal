@@ -44,7 +44,6 @@ use Auth0\SDK\API\Authentication;
 use Auth0\SDK\API\Helpers\State\SessionStateHandler;
 use Auth0\SDK\Store\SessionStore;
 use GuzzleHttp\Client;
-use Symfony\Component\HttpFoundation\Session\Session;
 
 /**
  * Controller routines for auth0 authentication.
@@ -66,7 +65,7 @@ class AuthController extends ControllerBase {
 
   protected $eventDispatcher;
   protected $tempStore;
-  protected $session;
+  protected $sessionManager;
 
   /**
    * The logger.
@@ -171,7 +170,7 @@ class AuthController extends ControllerBase {
    *
    * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
    *   The temp store factory.
-   * @param \Drupal\Core\Session\SessionManagerInterface $session
+   * @param \Drupal\Core\Session\SessionManagerInterface $session_manager
    *   The current session.
    * @param \Drupal\Core\PageCache\ResponsePolicyInterface $page_cache
    *   Page cache.
@@ -188,7 +187,7 @@ class AuthController extends ControllerBase {
    */
   public function __construct(
     PrivateTempStoreFactory $temp_store_factory,
-    Session $session,
+    SessionManagerInterface $session_manager,
     ResponsePolicyInterface $page_cache,
     LoggerChannelFactoryInterface $logger_factory,
     EventDispatcherInterface $event_dispatcher,
@@ -203,7 +202,7 @@ class AuthController extends ControllerBase {
 
     $this->eventDispatcher = $event_dispatcher;
     $this->tempStore = $temp_store_factory->get(AuthController::SESSION);
-    $this->session = $session;
+    $this->sessionManager = $session_manager;
     $this->logger = $logger_factory->get(AuthController::AUTH0_LOGGER);
     $this->auth0Logger = $logger_factory->get('auth0');
     $this->config = $config_factory->get('auth0.settings');
@@ -225,7 +224,7 @@ class AuthController extends ControllerBase {
   public static function create(ContainerInterface $container) {
     return new static(
         $container->get('user.private_tempstore'),
-        $container->get('session'),
+        $container->get('session_manager'),
         $container->get('page_cache_kill_switch'),
         $container->get('logger.factory'),
         $container->get('event_dispatcher'),
@@ -318,9 +317,9 @@ class AuthController extends ControllerBase {
   protected function getNonce($returnTo) {
     // Have to start the session after putting something into the session, or
     // we don't actually start it!
-    if (!$this->session->isStarted() && !isset($_SESSION['auth0_is_session_started'])) {
+    if (!$this->sessionManager->isStarted() && !isset($_SESSION['auth0_is_session_started'])) {
       $_SESSION['auth0_is_session_started'] = 'yes';
-      $this->session->migrate();
+      $this->sessionManager->start();
     }
 
     $sessionStateHandler = new SessionStateHandler(new SessionStore());
