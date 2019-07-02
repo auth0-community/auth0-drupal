@@ -1,7 +1,7 @@
 # Change Log
 
-## [8.x-2.3](https://github.com/auth0/wp-auth0/tree/8.x-2.3) (2019-07-01)
-[Full Changelog](https://github.com/auth0/wp-auth0/compare/8.x-2.2...8.x-2.3)
+## [8.x-2.3](https://github.com/auth0/auth0-drupal/tree/8.x-2.3) (2019-07-01)
+[Full Changelog](https://github.com/auth0/auth0-drupal/compare/8.x-2.2...8.x-2.3)
 
 **Closed issues**
 - Drupal Profile and Auth0 metadata sync [\#146](https://github.com/auth0/auth0-drupal/issues/146)
@@ -13,8 +13,8 @@
 - Fix: changes in roles are now detected correctly [\#144](https://github.com/auth0/auth0-drupal/pull/144) ([Phillywonka](https://github.com/Phillywonka))
 - Make sessions persist to fix invalid state [\#140](https://github.com/auth0/auth0-drupal/pull/140) ([bkildow](https://github.com/bkildow))
 
-## [8.x-2.2](https://github.com/auth0/wp-auth0/tree/8.x-2.2) (2019-05-10)
-[Full Changelog](https://github.com/auth0/wp-auth0/compare/8.x-2.1...8.x-2.2)
+## [8.x-2.2](https://github.com/auth0/auth0-drupal/tree/8.x-2.2) (2019-05-10)
+[Full Changelog](https://github.com/auth0/auth0-drupal/compare/8.x-2.1...8.x-2.2)
 
 **Closed issues**
 - Failed to exchange code for tokens: Invalid state [\#139](https://github.com/auth0/auth0-drupal/issues/139)
@@ -39,8 +39,8 @@
 - Fix inline JavaScript causing resend link not to work [\#129](https://github.com/auth0/auth0-drupal/pull/129) ([joshcanhelp](https://github.com/joshcanhelp))
 - De-Duped EmailNotVerifiedException in AuthController::processUserLogin [\#117](https://github.com/auth0/auth0-drupal/pull/117) ([mptap](https://github.com/mptap))
 
-## [8.x-2.1](https://github.com/auth0/wp-auth0/tree/8.x-2.1) (2018-09-28)
-[Full Changelog](https://github.com/auth0/wp-auth0/compare/2.0.3...8.x-2.1)
+## [8.x-2.1](https://github.com/auth0/auth0-drupal/tree/8.x-2.1) (2018-09-28)
+[Full Changelog](https://github.com/auth0/auth0-drupal/compare/2.0.3...8.x-2.1)
 
 **Closed issues**
 - Drupal.org module [\#86](https://github.com/auth0/auth0-drupal/issues/86)
