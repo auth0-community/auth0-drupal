@@ -659,7 +659,7 @@ class AuthController extends ControllerBase {
       // there is a user to join with. The isDatabase is because we don't want
       // to allow database user creation if there is an existing one with no
       // verified email.
-      if ($userInfo['email_verified'] || $isDatabaseUser) {
+      if (isset($userInfo['email_verified']) || $isDatabaseUser) {
         $joinUser = user_load_by_mail($userInfo['email']);
       }
     }
@@ -795,7 +795,7 @@ class AuthController extends ControllerBase {
       ];
 
       foreach ($mappings as $mapping) {
-        $this->auth0Logger->notice('mapping ' . $mapping);
+        $this->auth0Logger->notice('mapping ' . $mapping[1]);
 
         $key = $mapping[1];
         if (in_array($key, $skip_mappings)) {
