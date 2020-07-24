@@ -245,7 +245,7 @@ class AuthController extends ControllerBase {
    *   The redirect or a renderable array.
    */
   public function login(Request $request) {
-    global $base_root;
+    global $base_url;
 
     $lockExtraSettings = $this->config->get('auth0_lock_extra_settings');
 
@@ -275,7 +275,7 @@ class AuthController extends ControllerBase {
             'lockExtraSettings' => $lockExtraSettings,
             'configurationBaseUrl' => $this->helper->getTenantCdn($this->config->get('auth0_domain')),
             'showSignup' => $this->config->get('auth0_allow_signup'),
-            'callbackURL' => "$base_root/auth0/callback",
+            'callbackURL' => "$base_url/auth0/callback",
             'state' => $this->getNonce($returnTo),
             'scopes' => AUTH0_DEFAULT_SCOPES,
             'offlineAccess' => $this->offlineAccess,
@@ -294,6 +294,8 @@ class AuthController extends ControllerBase {
    *   The response after logout.
    */
   public function logout() {
+    global $base_url;
+
     $auth0Api = new Authentication($this->helper->getAuthDomain(), $this->clientId);
 
     user_logout();
@@ -301,7 +303,7 @@ class AuthController extends ControllerBase {
     // If we are using SSO, we need to logout completely from Auth0,
     // otherwise they will just logout of their client.
     return new TrustedRedirectResponse($auth0Api->get_logout_link(
-      \Drupal::request()->getSchemeAndHttpHost(),
+      $base_url,
       $this->redirectForSso ? NULL : $this->clientId
     ));
   }
@@ -347,12 +349,12 @@ class AuthController extends ControllerBase {
    *   The URL to redirect to for authorization.
    */
   protected function buildAuthorizeUrl($prompt, $returnTo = NULL) {
-    global $base_root;
+    global $base_url;
 
     $auth0Api = new Authentication($this->helper->getAuthDomain(), $this->clientId);
 
     $response_type = 'code';
-    $redirect_uri = "$base_root/auth0/callback";
+    $redirect_uri = "$base_url/auth0/callback";
     $connection = NULL;
     $state = $this->getNonce($returnTo);
     $additional_params = [];
@@ -416,7 +418,7 @@ class AuthController extends ControllerBase {
    *   The Auth0 exception.
    */
   public function callback(Request $request) {
-    global $base_root;
+    global $base_url;
     $problem_logging_in_msg = $this->t('There was a problem logging you in, sorry for the inconvenience.');
 
     $response = $this->checkForError($request, NULL);
@@ -429,7 +431,7 @@ class AuthController extends ControllerBase {
       'domain'        => $this->helper->getAuthDomain(),
       'client_id'     => $this->clientId,
       'client_secret' => $this->clientSecret,
-      'redirect_uri'  => "$base_root/auth0/callback",
+      'redirect_uri'  => "$base_url/auth0/callback",
       'persist_user' => FALSE,
     ]);
 
