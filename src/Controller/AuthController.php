@@ -288,7 +288,7 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   * Handles the login page override.
+   * Handles the logout page override.
    *
    * @return \Drupal\Core\Routing\TrustedRedirectResponse
    *   The response after logout.
@@ -857,18 +857,18 @@ class AuthController extends ControllerBase {
       $user_roles = $user->getRoles();
 
       $new_user_roles = array_merge(array_diff($user_roles, $not_granted), $roles_granted);
-      
+
       $roles_to_add = array_diff($new_user_roles, $user_roles);
       $roles_to_remove = array_diff($user_roles, $new_user_roles);
-      
+
       if (empty($roles_to_add) && empty($roles_to_remove)) {
           $this->auth0Logger->notice('no changes to roles detected');
           return;
-      } 
-         
+      }
+
       $this->auth0Logger->notice('changes to roles detected');
       $edit['roles'] = $new_user_roles;
-      
+
       foreach ($roles_to_add as $new_role) {
           $user->addRole($new_role);
       }
@@ -1029,7 +1029,7 @@ class AuthController extends ControllerBase {
    *
    * @throws \Auth0\SDK\Exception\CoreException
    *   Exception thrown when validating email.
-   * 
+   *
    * @deprecated v8.x-2.4 - the legacy send_verification_email endpoint itself is being deprecated and should no longer be called.
    */
   // phpcs:ignore

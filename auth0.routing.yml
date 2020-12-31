@@ -14,7 +14,7 @@ auth0.legacy_login:
     _form: '\Drupal\user\Form\UserLoginForm'
     _title: 'Log in'
   requirements:
-    _access: 'TRUE'
+    _user_is_logged_in: 'FALSE'
   options:
     _maintenance_access: TRUE
 
@@ -30,7 +30,45 @@ auth0.logout:
   defaults:
     _controller: '\Drupal\auth0\Controller\AuthController::logout'
   requirements:
+    _user_is_logged_in: 'TRUE'
+
+auth0.password:
+  path: '/user/password'
+  defaults:
+    _controller: '\Drupal\auth0\Controller\AuthController::login'
+    _title: 'Reset your password'
+  requirements:
     _access: 'TRUE'
+  options:
+    _maintenance_access: TRUE
+
+auth0.legacy_password:
+  path: '/user/password/legacy'
+  defaults:
+    _form: '\Drupal\user\Form\UserPasswordForm'
+    _title: 'Reset your password'
+  requirements:
+    _access: 'TRUE'
+  options:
+    _maintenance_access: TRUE
+
+auth0.register:
+  path: '/user/register'
+  defaults:
+    _controller: '\Drupal\auth0\Controller\AuthController::login'
+    _title: 'Create new account'
+  requirements:
+    _access: 'TRUE'
+  options:
+    _maintenance_access: TRUE
+
+auth0.legacy_register:
+  path: '/user/register/legacy'
+  defaults:
+    _entity_form: 'user.register'
+    _title: 'Create new account'
+  requirements:
+    _access_user_register: 'TRUE'
 
 auth0.verify_email:
   path: '/auth0/verify_email'
