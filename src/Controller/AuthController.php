@@ -257,7 +257,9 @@ class AuthController extends ControllerBase {
 
     // If supporting SSO, redirect to the hosted login page for authorization.
     if ($this->redirectForSso) {
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl(NULL, $returnTo));
+      $extra_params = $request->query->all();
+
+      return new TrustedRedirectResponse($this->buildAuthorizeUrl(NULL, $returnTo, $extra_params));
     }
 
     /* Not doing SSO, so show login page */
@@ -342,11 +344,13 @@ class AuthController extends ControllerBase {
    *   If prompt=none should be passed, false if not.
    * @param string $returnTo
    *   Local path|null if null, use default of /user.
+   * @param array $extra_params
+   *   An optional array of extra parameters to pass to the authorization URL.
    *
    * @return string
    *   The URL to redirect to for authorization.
    */
-  protected function buildAuthorizeUrl($prompt, $returnTo = NULL) {
+  protected function buildAuthorizeUrl($prompt, $returnTo = NULL, array $extra_params = []) {
     global $base_root;
 
     $auth0Api = new Authentication($this->helper->getAuthDomain(), $this->clientId);
@@ -364,6 +368,10 @@ class AuthController extends ControllerBase {
 
     if ($prompt) {
       $additional_params['prompt'] = $prompt;
+    }
+
+    foreach ($extra_params as $param => $value) {
+      $additional_params[$param] = $value;
     }
 
     return $auth0Api->get_authorize_link($response_type, $redirect_uri, $connection, $state, $additional_params);
