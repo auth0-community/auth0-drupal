@@ -1,0 +1,64 @@
+auth0.settings:
+  type: config_object
+  label: 'Auth0 settings'
+  mapping:
+    auth0_form_title:
+      type: string
+      label: 'Form title'
+    auth0_allow_signup:
+      type: boolean
+      label: 'Allow user signup'
+    auth0_allow_offline_access:
+      type: boolean
+      label: 'A Refresh Token in the Sign in Event for offline access'
+    auth0_redirect_for_sso:
+      type: boolean
+      label: 'Universal Login Page'
+    auth0_widget_cdn:
+      type: uri
+      label: 'Lock JS CDN URL'
+    auth0_requires_verified_email:
+      type: boolean
+      label: 'Require verified email'
+    auth0_join_user_by_mail_enabled:
+      type: boolean
+      label: 'Link Auth0 logins to Drupal users by email address'
+    auth0_username_claim:
+      type: string
+      label: 'Map Auth0 claim to Drupal user name'
+    auth0_login_css:
+      type: string
+      label: 'Login widget css'
+    auth0_auto_register:
+      type: boolean
+      label: 'Auto Register Auth0 users'
+    auth0_lock_extra_settings:
+      type: string
+      label: 'Lock extra settings'
+    auth0_claim_mapping:
+      type: string
+      label: 'Mapping of Claims to Profile Fields'
+    auth0_claim_to_use_for_role:
+      type: string
+      label: 'Claim for Role Mapping'
+    auth0_role_mapping:
+      type: string
+      label: 'Mapping of Claim Role Values to Drupal Roles'
+    auth0_client_id:
+      type: string
+      label: 'Client ID'
+    auth0_client_secret:
+      type: string
+      label: 'Client Secret'
+    auth0_domain:
+      type: string
+      label: 'Domain'
+    auth0_custom_domain:
+      type: string
+      label: 'Custom Domain'
+    auth0_jwt_signature_alg:
+      type: string
+      label: 'JWT Signature Algorithm'
+    auth0_secret_base64_encoded:
+      type: boolean
+      label: 'Is Client Secret is base64 encoded'
