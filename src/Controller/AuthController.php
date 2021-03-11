@@ -300,9 +300,13 @@ class AuthController extends ControllerBase {
 
     // If we are using SSO, we need to logout completely from Auth0,
     // otherwise they will just logout of their client.
+    // Pass in the client_id (if any) so that users can whitelist logout
+    // URL's in the application settings.
+    // If no client_id is present, then logout URL's will have to be
+    // whitelisted in the tenant settings.
     return new TrustedRedirectResponse($auth0Api->get_logout_link(
       \Drupal::request()->getSchemeAndHttpHost(),
-      $this->redirectForSso ? NULL : $this->clientId
+      $this->clientId ?? NULL
     ));
   }
 
