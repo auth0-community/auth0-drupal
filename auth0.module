@@ -28,7 +28,7 @@ function auth0_theme() {
  * Handle users deletion, it should delete the Auth0 profile.
  */
 function auth0_user_delete($account) {
-  db_delete('auth0_user')
+  \Drupal::database()->delete('auth0_user')
     ->condition('drupal_id', $account->uid->value)
     ->execute();
 }

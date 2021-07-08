@@ -16,9 +16,8 @@ if (file_exists(AUTH0_PATH . '/vendor/autoload.php')) {
 }
 
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Url;
 use Drupal\user\Entity\User;
-use Drupal\user\PrivateTempStoreFactory;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Drupal\Core\Session\SessionManagerInterface;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -169,7 +168,7 @@ class AuthController extends ControllerBase {
   /**
    * Initialize the controller.
    *
-   * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
+   * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
    *   The temp store factory.
    * @param \Drupal\Core\Session\SessionManagerInterface $session_manager
    *   The current session.
@@ -224,7 +223,7 @@ class AuthController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-        $container->get('user.private_tempstore'),
+        $container->get('tempstore.private'),
         $container->get('session_manager'),
         $container->get('page_cache_kill_switch'),
         $container->get('logger.factory'),
@@ -716,7 +715,7 @@ class AuthController extends ControllerBase {
    * Get the auth0 user profile.
    */
   protected function findAuth0User($id) {
-    $auth0_user = db_select('auth0_user', 'a')
+    $auth0_user = \Drupal::database()->select('auth0_user', 'a')
       ->fields('a', ['drupal_id'])
       ->condition('auth0_id', $id, '=')
       ->execute()
@@ -732,7 +731,7 @@ class AuthController extends ControllerBase {
    *   The user info array.
    */
   protected function updateAuth0User(array $userInfo) {
-    db_update('auth0_user')
+    \Drupal::database()->update('auth0_user')
       ->fields([
         'auth0_object' => serialize($userInfo),
       ])
@@ -857,23 +856,23 @@ class AuthController extends ControllerBase {
       $user_roles = $user->getRoles();
 
       $new_user_roles = array_merge(array_diff($user_roles, $not_granted), $roles_granted);
-      
+
       $roles_to_add = array_diff($new_user_roles, $user_roles);
       $roles_to_remove = array_diff($user_roles, $new_user_roles);
-      
+
       if (empty($roles_to_add) && empty($roles_to_remove)) {
-          $this->auth0Logger->notice('no changes to roles detected');
-          return;
-      } 
-         
+        $this->auth0Logger->notice('no changes to roles detected');
+        return;
+      }
+
       $this->auth0Logger->notice('changes to roles detected');
       $edit['roles'] = $new_user_roles;
-      
+
       foreach ($roles_to_add as $new_role) {
-          $user->addRole($new_role);
+        $user->addRole($new_role);
       }
       foreach ($roles_to_remove as $remove_role) {
-          $user->removeRole($remove_role);
+        $user->removeRole($remove_role);
       }
     }
   }
@@ -929,7 +928,7 @@ class AuthController extends ControllerBase {
    */
   protected function insertAuth0User(array $userInfo, $uid) {
 
-    db_insert('auth0_user')->fields([
+    \Drupal::database()->insert('auth0_user')->fields([
       'auth0_id' => $userInfo['user_id'],
       'drupal_id' => $uid,
       'auth0_object' => json_encode($userInfo),
@@ -1029,7 +1028,7 @@ class AuthController extends ControllerBase {
    *
    * @throws \Auth0\SDK\Exception\CoreException
    *   Exception thrown when validating email.
-   * 
+   *
    * @deprecated v8.x-2.4 - the legacy send_verification_email endpoint itself is being deprecated and should no longer be called.
    */
   // phpcs:ignore
