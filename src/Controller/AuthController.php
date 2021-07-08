@@ -16,9 +16,8 @@ if (file_exists(AUTH0_PATH . '/vendor/autoload.php')) {
 }
 
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Url;
 use Drupal\user\Entity\User;
-use Drupal\user\PrivateTempStoreFactory;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Drupal\Core\Session\SessionManagerInterface;
 use Drupal\Core\Routing\TrustedRedirectResponse;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -169,7 +168,7 @@ class AuthController extends ControllerBase {
   /**
    * Initialize the controller.
    *
-   * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
+   * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
    *   The temp store factory.
    * @param \Drupal\Core\Session\SessionManagerInterface $session_manager
    *   The current session.
@@ -224,7 +223,7 @@ class AuthController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-        $container->get('user.private_tempstore'),
+        $container->get('tempstore.private'),
         $container->get('session_manager'),
         $container->get('page_cache_kill_switch'),
         $container->get('logger.factory'),
@@ -862,18 +861,18 @@ class AuthController extends ControllerBase {
       $roles_to_remove = array_diff($user_roles, $new_user_roles);
 
       if (empty($roles_to_add) && empty($roles_to_remove)) {
-          $this->auth0Logger->notice('no changes to roles detected');
-          return;
+        $this->auth0Logger->notice('no changes to roles detected');
+        return;
       }
 
       $this->auth0Logger->notice('changes to roles detected');
       $edit['roles'] = $new_user_roles;
 
       foreach ($roles_to_add as $new_role) {
-          $user->addRole($new_role);
+        $user->addRole($new_role);
       }
       foreach ($roles_to_remove as $remove_role) {
-          $user->removeRole($remove_role);
+        $user->removeRole($remove_role);
       }
     }
   }
